@@ -5,123 +5,165 @@ nextflow.enable.dsl=2
 params.bpm = 'manifest-cluster/GSACyto_20044998_A1.bpm'
 params.csv = 'gtcler/GSA-24v1-0_C1.csv'
 params.egt = 'manifest-cluster/2003.egt'
-params.genome_fasta = '/staging/references/hg19/hg19.fa'
-params.sexfile = './sexfile'
-params.penncnv_pfb = 'test/out.pfb'
+params.fasta = '/staging/references/hg19/hg19.fa'
+params.pfb = 'test/out.pfb'
 params.output_dir = 'outputs'
 params.samplesheet = 'samplesheets/chip001.tsv'
 params.idat_folder = 'idats/chip001'
 
+chip_id = file(params.idat_folder).baseName
+output_dir = "${params.output_dir}/${chip_id}"
+
 workflow {
     idat_folder = Channel.fromPath(params.idat_folder)
-    
-    idat2gtc(idat_folder)
-    gtc2vcf(idat2gtc.out)
-    vcf2bedgraph(gtc2vcf.out)
-    vcf2penncnv(vcf2bedgraph.out)
-    penncnv_detect_all(vcf2penncnv.out)
-    penncnv_clean_cnv(penncnv_detect_all.out)
+    bpm = Channel.fromPath(params.bpm)
+    csv = Channel.fromPath(params.csv)
+    egt = Channel.fromPath(params.egt)
+    pfb = Channel.fromPath(params.pfb)
+    fasta = Channel.fromPath(params.fasta)
+
+    fasta_dir = file(params.fasta).getParent()
+    print(output_dir)
+
+    idat2gtc(idat_folder, bpm, egt)
+    vcfs = gtc2vcf(idat2gtc.out, bpm, csv, fasta_dir, fasta)
+
+
+
+    vcfs .flatten() .map {
+        vcf -> [vcf.getSimpleName(), vcf]
+    }
+    .set {named_vcfs}
+
+    vcf2bedgraph(named_vcfs)
+    vcf2penncnv(named_vcfs)
+    penncnv_detect(vcf2penncnv.out, pfb)
+    penncnv_clean_cnv(penncnv_detect.out, pfb)
     outpenncnv2bed(penncnv_clean_cnv.out)
     classification(outpenncnv2bed.out)
+
 }
 
 process idat2gtc {
-    publishDir "${params.output_dir}/${params.idat_folder.name}/gtcs"
+    publishDir "${output_dir}/gtcs"
 
     input:
-    path idat_folder
+    path(idat_folder)
+    path(bpm)
+    path(egt)
 
     output:
-    path gtcs
+    path "gtcs/"
 
     script:
     """
-    /opt/dragena-linux-x64-DAv1.0.0/dragena/dragena genotype call --bpm-manifest ${params.bpm} --cluster-file ${params.egt} --idat-folder ${idat_folder} --output-folder ${gtcs}
+    mkdir gtcs/
+    /opt/dragena-linux-x64-DAv1.0.0/dragena/dragena \
+    genotype call \
+    --bpm-manifest ${bpm} \
+    --cluster-file ${egt} \
+    --idat-folder ${idat_folder} \
+    --output-folder gtcs/
     """
 }
 
 process gtc2vcf {
-    publishDir "${params.output_dir}/${params.idat_folder.name}/vcfs"
+    publishDir "${output_dir}/vcfs"
 
     input:
     path gtcs
+    path bpm
+    path csv
+    path fasta_dir
+    path fasta
 
     output:
-    path vcfs
+    path("*.vcf.gz")
 
     script:
     """
-    /opt/dragena-linux-x64-DAv1.0.0/dragena/dragena genotype gtc-to-vcf --bpm-manifest ${params.bpm} --csv-manifest ${params.csv} --genome-fasta-file ${params.genome_fasta} --gtc-folder ${gtcs} --output-folder ${vcfs}
+    /opt/dragena-linux-x64-DAv1.0.0/dragena/dragena genotype gtc-to-vcf \
+        --gtc-folder ${gtcs} \
+        --bpm-manifest ${bpm} \
+        --csv-manifest ${csv} \
+        --genome-fasta-file "${fasta_dir}/${fasta}" \
+        --output-folder ./
     """
 }
 
 process vcf2bedgraph {
-    publishDir "${params.output_dir}/${params.idat_folder.name}/bedgraphs"
+    tag "$sampleId"
+    publishDir "${output_dir}/bedgraphs"
 
     input:
-    path vcfs
+    tuple val(sampleId), path(vcf)
 
     output:
-    path bedgraphs
+    path "*.bedgraph.gz"
 
     script:
     """
-    bcftools query -f '%CHROM\t%POS\t%END\t%ID\t%REF\t%ALT\n' ${vcfs} > ${bedgraphs}
+    bcftools query -f '%CHROM\t%POS\t%END\t%ID\t%REF\t%ALT\n' ${vcf} | gzip -c > "${sampleId}.bedgraph.gz"
     """
 }
 
 process vcf2penncnv {
-    publishDir "${params.output_dir}/${params.idat_folder.name}/beds"
+    tag "$sampleId"
+    publishDir "${output_dir}/penncnv_inputs/"
 
     input:
-    path bedgraphs
+    tuple val(sampleId), path(vcf)
 
     output:
-    path cnv_input
+    tuple val(sampleId), path("*.txt")
 
     script:
     """
-    printf "Name\tChr\tPosition\tGType\tLog R Ratio\tB Allele Freq" > ${cnv_input}
-    bcftools query -f '%ID\t%CHROM\t%POS[\t%GT\t%LRR\t%BAF]\n' ${bedgraphs} | sed 's/1\\/1/BB/g;s/0\\/0/AA/g;s/0\\/1/AB/g;s/.\\/./NC/g' >> ${cnv_input}
+    printf "Name\tChr\tPosition\tGType\tLog R Ratio\tB Allele Freq\n" > "${sampleId}.txt"
+    bcftools query -f '%ID\t%CHROM\t%POS[\t%GT\t%LRR\t%BAF]\n' ${vcf} | sed 's/1\\/1/BB/g;s/0\\/0/AA/g;s/0\\/1/AB/g;s/.\\/./NC/g' >> "${sampleId}.txt"
     """
 }
 
-process penncnv_detect_all {
-    publishDir "${params.output_dir}/${params.idat_folder.name}/qcs"
+process penncnv_detect {
+    container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
+    publishDir "${output_dir}/cnvs"
 
     input:
-    path cnv_input
+    tuple val(sampleId), path(txt)
+    path pfb
 
     output:
-    path combined_cnv
+    tuple val(sampleId), path("*.txt")
 
     script:
     """
-    ./penncnv_latest.sif ./detect_cnv.pl -test -hmm lib/hhall.hmm -pfb ${params.penncnv_pfb} ${cnv_input} -log ${combined_cnv}.log -out ${combined_cnv}.out.cnv
-    ./penncnv_latest.sif ./detect_cnv.pl -test -hmm lib/hhall.hmm -pfb ${params.penncnv_pfb} ${cnv_input} --confidence --chrx --sexfile ${params.sexfile} -log ${combined_cnv}.chrx.log -out ${combined_cnv}.chrx.out.cnv
-    ./penncnv_latest.sif ./detect_cnv.pl -test -hmm lib/hhall.hmm -pfb ${params.penncnv_pfb} ${cnv_input} --confidence --chry --sexfile ${params.sexfile} -log ${combined_cnv}.chry.log -out ${combined_cnv}.chry.out.cnv
+    /home/user/PennCNV/detect_cnv.pl -test -hmm /home/user/PennCNV/lib/hhall.hmm -pfb ./${pfb} ${txt} --confidence         -log ${sampleId}.log      -out ${sampleId}.autosomal.out.cnv
+    /home/user/PennCNV/detect_cnv.pl -test -hmm /home/user/PennCNV/lib/hhall.hmm -pfb ./${pfb} ${txt} --confidence --chrx  -log ${sampleId}.chrx.log -out ${sampleId}.chrx.out.cnv
+    /home/user/PennCNV/detect_cnv.pl -test -hmm /home/user/PennCNV/lib/hhall.hmm -pfb ./${pfb} ${txt} --confidence --chry  -log ${sampleId}.chry.log -out ${sampleId}.chry.out.cnv
 
-    cat ${combined_cnv}.out.cnv ${combined_cnv}.chrx.out.cnv ${combined_cnv}.chry.out.cnv > ${combined_cnv}.combined.out.cnv
+    cat ${sampleId}.autosomal.out.cnv ${sampleId}.chrx.out.cnv ${sampleId}.chry.out.cnv > ${sampleId}.cnv.txt
     """
 }
 
 process penncnv_clean_cnv {
-    publishDir "${params.output_dir}/${params.idat_folder.name}/beds"
+    container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
+    publishDir "${output_dir}/cnvs"
 
     input:
-    path combined_cnv
+    tuple val(sampleId), path(cnv)
+    path pfb
 
     output:
-    path clean_cnv
+    path "*.cleaned.txt"
 
     script:
     """
-    ./penncnv_latest.sif ./clean_cnv.pl combineseg --signalfile ${params.penncnv_pfb} > ${clean_cnv}
+    /home/user/PennCNV/clean_cnv.pl combineseg --signalfile ${pfb} ${cnv} > "${sampleId}.cleaned.txt"
     """
 }
 
 process outpenncnv2bed {
-    publishDir "${params.output_dir}/${params.idat_folder.name}/beds"
+    publishDir "${output_dir}/beds"
 
     input:
     path clean_cnv
@@ -136,7 +178,7 @@ process outpenncnv2bed {
 }
 
 process classification {
-    publishDir "${params.output_dir}/${params.idat_folder.name}/pdfs"
+    publishDir "${output_dir}/classifyCNV"
 
     input:
     path raw_cnv_bed
