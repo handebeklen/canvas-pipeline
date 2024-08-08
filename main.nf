@@ -150,15 +150,16 @@ process penncnv_clean_cnv {
     publishDir "${output_dir}/cnvs"
 
     input:
-    tuple val(sampleId), path(cnv)
+    tuple val(sampleId), path(txt)
     path pfb
 
     output:
-    path "*.cleaned.txt"
+    tuple val(sampleId), path("*.cleaned.txt")
+
 
     script:
     """
-    /home/user/PennCNV/clean_cnv.pl combineseg --signalfile ${pfb} ${cnv} > "${sampleId}.cleaned.txt"
+    /home/user/PennCNV/clean_cnv.pl combineseg --signalfile ${pfb} ${txt} > ${sampleId}.cleaned.txt
     """
 }
 
@@ -166,28 +167,29 @@ process outpenncnv2bed {
     publishDir "${output_dir}/beds"
 
     input:
-    path clean_cnv
+    tuple val(sampleId), path(txt)
 
     output:
-    path raw_cnv_bed
+    tuple val(sampleId), path ("*.raw_cnv.bed")
 
     script:
     """
-    python3 penncnv2bed.py ${clean_cnv} ${raw_cnv_bed}
+    python3 /mnt/dragen/pipelines/canvas/PennCNV/test/test42/penncnv2bed.py ${txt} ${sampleId}.raw_cnv.bed
     """
 }
 
 process classification {
+    container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
     publishDir "${output_dir}/classifyCNV"
 
     input:
-    path raw_cnv_bed
+    tuple val(sampleId), path(bed)
 
     output:
-    path pdfs
+    tuple val(sampleId), path ("*.classification.txt")
 
     script:
     """
-    ./classifycnv_1.0.sif python3 /ClassifyCNV/ClassifyCNV.py --infile ${raw_cnv_bed} --GenomeBuild hg19 --precise --outfile ${pdfs}
+    ./classifycnv_1.0.sif python3 /ClassifyCNV/ClassifyCNV.py --infile ${raw_cnv_bed} --GenomeBuild hg19 --precise --out${sampleId}.classification.txt
     """
 }
