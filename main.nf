@@ -19,33 +19,51 @@ workflow {
     bpm = Channel.fromPath(params.bpm)
     csv = Channel.fromPath(params.csv)
     egt = Channel.fromPath(params.egt)
-    pfb = Channel.fromPath(params.pfb)
+    pfb = file(params.pfb)
     fasta = Channel.fromPath(params.fasta)
 
     fasta_dir = file(params.fasta).getParent()
     print(output_dir)
 
     idat2gtc(idat_folder, bpm, egt)
-    vcfs = gtc2vcf(idat2gtc.out, bpm, csv, fasta_dir, fasta)
-
-
+    makesexfile(idat2gtc.out.sample_summary)
+    vcfs = gtc2vcf(idat2gtc.out.gtc_dir, bpm, csv, fasta_dir, fasta)
 
     vcfs .flatten() .map {
         vcf -> [vcf.getSimpleName(), vcf]
     }
     .set {named_vcfs}
 
-    vcf2bedgraph(named_vcfs)
+    makebedgraphs(named_vcfs)
     vcf2penncnv(named_vcfs)
+
     penncnv_detect(vcf2penncnv.out, pfb)
     penncnv_clean_cnv(penncnv_detect.out, pfb)
-    outpenncnv2bed(penncnv_clean_cnv.out)
-    classification(outpenncnv2bed.out)
 
+
+    makesexfile.out.view()
+    penncnv_clean_cnv.out.view()
+
+    beds = penncnv2bed(penncnv_clean_cnv.out, makesexfile.out.first())
+    classification(penncnv2bed.out)
+}
+
+
+process makesexfile {
+    input:
+    path sample_summary
+
+    output:
+    path "sex_file"
+
+    shell:
+    '''
+    awk -F"," '{printf "%s\\t%s\\n", $1, $7}' !{sample_summary} > sex_file
+    '''
 }
 
 process idat2gtc {
-    publishDir "${output_dir}/gtcs"
+    publishDir "${output_dir}/"
 
     input:
     path(idat_folder)
@@ -53,7 +71,8 @@ process idat2gtc {
     path(egt)
 
     output:
-    path "gtcs/"
+    path "gtcs/", emit: gtc_dir
+    path "gtcs/gt_sample_summary.csv", emit: sample_summary
 
     script:
     """
@@ -91,20 +110,21 @@ process gtc2vcf {
     """
 }
 
-process vcf2bedgraph {
+process makebedgraphs {
     tag "$sampleId"
     publishDir "${output_dir}/bedgraphs"
 
     input:
-    tuple val(sampleId), path(vcf)
+    tuple val(sampleId), path(txt)
 
     output:
     path "*.bedgraph.gz"
 
-    script:
-    """
-    bcftools query -f '%CHROM\t%POS\t%END\t%ID\t%REF\t%ALT\n' ${vcf} | gzip -c > "${sampleId}.bedgraph.gz"
-    """
+    shell:
+    '''
+    awk 'BEGIN {print "track type=bedGraph name="!{sampleId} LRR" maxHeightPixels=200:200:200 graphType=points viewLimits=-2:2 windowingFunction=none color=0,0,0 altColor=0,0,0"}{printf "%s\\t%s\\t%s\\t%s\\n", $2, $3, $3, $5}' !{txt} | sed 1d | sed '/\\.$/d' | gzip -c > !{sampleId}.LRR.bedgraph.gz
+    awk 'BEGIN {print "track type=bedGraph name="!{sampleId} BAF" maxHeightPixels=200:200:200 graphType=points viewLimits=-2:2 windowingFunction=none color=0,0,0 altColor=0,0,0"}{printf "%s\\t%s\\t%s\\t%s\\n", $2, $3, $3, $6}' !{txt} | sed 1d | sed '/\\.$/d' | gzip -c > !{sampleId}.BAF.bedgraph.gz
+    '''
 }
 
 process vcf2penncnv {
@@ -115,7 +135,7 @@ process vcf2penncnv {
     tuple val(sampleId), path(vcf)
 
     output:
-    tuple val(sampleId), path("*.txt")
+    tuple val(sampleId), path("${sampleId}.txt")
 
     script:
     """
@@ -125,6 +145,7 @@ process vcf2penncnv {
 }
 
 process penncnv_detect {
+    tag "$sampleId"
     container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
     publishDir "${output_dir}/cnvs"
 
@@ -133,7 +154,7 @@ process penncnv_detect {
     path pfb
 
     output:
-    tuple val(sampleId), path("*.txt")
+    tuple val(sampleId), path("${sampleId}.cnv.txt")
 
     script:
     """
@@ -146,6 +167,7 @@ process penncnv_detect {
 }
 
 process penncnv_clean_cnv {
+    tag "$sampleId"
     container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
     publishDir "${output_dir}/cnvs"
 
@@ -154,7 +176,7 @@ process penncnv_clean_cnv {
     path pfb
 
     output:
-    tuple val(sampleId), path("*.cleaned.txt")
+    tuple val(sampleId), path("${sampleId}.cleaned.txt")
 
 
     script:
@@ -163,33 +185,37 @@ process penncnv_clean_cnv {
     """
 }
 
-process outpenncnv2bed {
+process penncnv2bed {
+    tag "$sampleId"
     publishDir "${output_dir}/beds"
 
     input:
     tuple val(sampleId), path(txt)
+    path sex_file
 
     output:
-    tuple val(sampleId), path ("*.raw_cnv.bed")
+    tuple val(sampleId), path ("${sampleId}.bed")
 
     script:
     """
-    python3 /mnt/dragen/pipelines/canvas/PennCNV/test/test42/penncnv2bed.py ${txt} ${sampleId}.raw_cnv.bed
+    python3 ${projectDir}/penncnv2bed.py --input_file ${txt} --output_file ${sampleId}.bed --sex_file ${sex_file}
     """
 }
 
 process classification {
-    container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
-    publishDir "${output_dir}/classifyCNV"
+    tag "$sampleId"
+    container "/mnt/dragen/pipelines/canvas/classifycnv_1.0.sif"
+    publishDir "${output_dir}/ClassifyCNV/"
 
     input:
     tuple val(sampleId), path(bed)
 
     output:
-    tuple val(sampleId), path ("*.classification.txt")
+    path "${sampleId}/Scoresheet.txt"
+    path "${sampleId}/Intermediate_files/*.bed"
 
     script:
     """
-    ./classifycnv_1.0.sif python3 /ClassifyCNV/ClassifyCNV.py --infile ${raw_cnv_bed} --GenomeBuild hg19 --precise --out${sampleId}.classification.txt
+    python3 /ClassifyCNV/ClassifyCNV.py --infile ${bed} --GenomeBuild hg19 --precise --outdir "${sampleId}"
     """
 }
