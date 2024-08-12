@@ -7,7 +7,7 @@ PAR2_START, PAR2_END = 154931044, 155260560
 
 def is_in_par(chr_num, start, end):
     """Check if a given region falls within the PAR1 or PAR2 regions."""
-    if chr_num in ["X", "Y"]:
+    if chr_num in ["chrX", "chrY", "X", "Y"]:
         start, end = int(start), int(end)
         # Check if the region overlaps with PAR1 or PAR2
         if (PAR1_START <= start <= PAR1_END) or (PAR1_START <= end <= PAR1_END):
@@ -32,7 +32,7 @@ def transform_data(input_file, output_file, sex_file):
             sample_id = file_info.split('.')[0]  # Assuming the sample ID is part of the file name
             sex = genders.get(sample_id, "Unknown")
 
-            if chr_num in ["chrX", "chrY"]:
+            if chr_num in ["chrX", "chrY", "X", "Y"]:
                 if sex == "M":
                     if is_in_par(chr_num, start, end):
                         # PAR region behaves like autosomal regions
