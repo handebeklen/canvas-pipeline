@@ -1,13 +1,13 @@
 import argparse
 
 # Define the pseudoautosomal regions (PAR) for the human genome
-# PAR1 and PAR2 for X and Y chromosomes (in base pairs)
+# PAR1 and PAR2 for X chromosome (in base pairs)
 PAR1_START, PAR1_END = 60001, 2699520
 PAR2_START, PAR2_END = 154931044, 155260560
 
 def is_in_par(chr_num, start, end):
     """Check if a given region falls within the PAR1 or PAR2 regions."""
-    if chr_num in ["chrX", "chrY", "X", "Y"]:
+    if chr_num in ["chrX", "X"]:
         start, end = int(start), int(end)
         # Check if the region overlaps with PAR1 or PAR2
         if (PAR1_START <= start <= PAR1_END) or (PAR1_START <= end <= PAR1_END):
