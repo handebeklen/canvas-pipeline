@@ -63,7 +63,7 @@ process makesexfile {
 }
 
 process idat2gtc {
-    publishDir "${output_dir}/"
+    publishDir "${output_dir}/", mode: "copy"
 
     input:
     path(idat_folder)
@@ -87,7 +87,7 @@ process idat2gtc {
 }
 
 process gtc2vcf {
-    publishDir "${output_dir}/vcfs"
+    publishDir "${output_dir}/vcfs", mode: "copy"
 
     input:
     path gtcs
@@ -112,7 +112,7 @@ process gtc2vcf {
 
 process makebedgraphs {
     tag "$sampleId"
-    publishDir "${output_dir}/bedgraphs"
+    publishDir "${output_dir}/bedgraphs", mode: "copy"
 
     input:
     tuple val(sampleId), path(txt)
@@ -129,7 +129,7 @@ process makebedgraphs {
 
 process vcf2penncnv {
     tag "$sampleId"
-    publishDir "${output_dir}/penncnv_inputs/"
+    publishDir "${output_dir}/penncnv_inputs/", mode: "copy"
 
     input:
     tuple val(sampleId), path(vcf)
@@ -147,7 +147,7 @@ process vcf2penncnv {
 process penncnv_detect {
     tag "$sampleId"
     container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
-    publishDir "${output_dir}/cnvs"
+    publishDir "${output_dir}/cnvs", mode: "copy"
 
     input:
     tuple val(sampleId), path(txt)
@@ -169,7 +169,7 @@ process penncnv_detect {
 process penncnv_clean_cnv {
     tag "$sampleId"
     container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
-    publishDir "${output_dir}/cnvs"
+    publishDir "${output_dir}/cnvs", mode: "copy"
 
     input:
     tuple val(sampleId), path(txt)
@@ -187,7 +187,7 @@ process penncnv_clean_cnv {
 
 process penncnv2bed {
     tag "$sampleId"
-    publishDir "${output_dir}/beds"
+    publishDir "${output_dir}/beds", mode: "copy"
 
     input:
     tuple val(sampleId), path(txt)
@@ -205,7 +205,7 @@ process penncnv2bed {
 process classification {
     tag "$sampleId"
     container "/mnt/dragen/pipelines/canvas/classifycnv_1.0.sif"
-    publishDir "${output_dir}/ClassifyCNV/"
+    publishDir "${output_dir}/ClassifyCNV/", mode: "copy"
 
     input:
     tuple val(sampleId), path(bed)
