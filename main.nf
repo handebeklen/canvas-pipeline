@@ -34,8 +34,9 @@ workflow {
     }
     .set {named_vcfs}
 
-    makebedgraphs(named_vcfs)
     vcf2penncnv(named_vcfs)
+
+    makebedgraphs(vcf2penncnv.out)
 
     penncnv_detect(vcf2penncnv.out, pfb)
     penncnv_clean_cnv(penncnv_detect.out, pfb)
@@ -110,23 +111,6 @@ process gtc2vcf {
     """
 }
 
-process makebedgraphs {
-    tag "$sampleId"
-    publishDir "${output_dir}/bedgraphs", mode: "copy"
-
-    input:
-    tuple val(sampleId), path(txt)
-
-    output:
-    path "*.bedgraph.gz"
-
-    shell:
-    '''
-    awk 'BEGIN {print "track type=bedGraph name="!{sampleId} LRR" maxHeightPixels=200:200:200 graphType=points viewLimits=-2:2 windowingFunction=none color=0,0,0 altColor=0,0,0"}{printf "%s\\t%s\\t%s\\t%s\\n", $2, $3, $3, $5}' !{txt} | sed 1d | sed '/\\.$/d' | gzip -c > !{sampleId}.LRR.bedgraph.gz
-    awk 'BEGIN {print "track type=bedGraph name="!{sampleId} BAF" maxHeightPixels=200:200:200 graphType=points viewLimits=-2:2 windowingFunction=none color=0,0,0 altColor=0,0,0"}{printf "%s\\t%s\\t%s\\t%s\\n", $2, $3, $3, $6}' !{txt} | sed 1d | sed '/\\.$/d' | gzip -c > !{sampleId}.BAF.bedgraph.gz
-    '''
-}
-
 process vcf2penncnv {
     tag "$sampleId"
     publishDir "${output_dir}/penncnv_inputs/", mode: "copy"
@@ -142,6 +126,23 @@ process vcf2penncnv {
     printf "Name\tChr\tPosition\tGType\tLog R Ratio\tB Allele Freq\n" > "${sampleId}.txt"
     bcftools query -f '%ID\t%CHROM\t%POS[\t%GT\t%LRR\t%BAF]\n' ${vcf} | sed 's/1\\/1/BB/g;s/0\\/0/AA/g;s/0\\/1/AB/g;s/.\\/./NC/g' >> "${sampleId}.txt"
     """
+}
+
+process makebedgraphs {
+    tag "$sampleId"
+    publishDir "${output_dir}/bedgraphs", mode: "copy"
+
+    input:
+    tuple val(sampleId), path(txt)
+
+    output:
+    path "*.bedgraph.gz"
+
+    shell:
+    '''
+    awk 'BEGIN {print "track type=bedGraph name="!{sampleId} LRR" maxHeightPixels=200:200:200 graphType=points viewLimits=-2:2 windowingFunction=none color=0,0,0 altColor=0,0,0"}{printf "%s\\t%s\\t%s\\t%s\\n", $2, $3, $3, $5}' !{txt} | sed 1d | sed '/\\.$/d' | gzip -c > !{sampleId}.LRR.bedgraph.gz
+    awk 'BEGIN {print "track type=bedGraph name="!{sampleId} BAF" maxHeightPixels=200:200:200 graphType=points viewLimits=-2:2 windowingFunction=none color=0,0,0 altColor=0,0,0"}{printf "%s\\t%s\\t%s\\t%s\\n", $2, $3, $3, $6}' !{txt} | sed 1d | sed '/\\.$/d' | gzip -c > !{sampleId}.BAF.bedgraph.gz
+    '''
 }
 
 process penncnv_detect {
