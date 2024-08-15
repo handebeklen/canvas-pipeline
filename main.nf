@@ -10,6 +10,8 @@ params.pfb = 'test/out.pfb'
 params.output_dir = 'outputs'
 params.samplesheet = 'samplesheets/chip001.tsv'
 params.idat_folder = 'idats/chip001'
+params.band = "canvas-pipeline/"
+params.tex_template = "asdadfa"
 
 chip_id = file(params.idat_folder).baseName
 output_dir = "${params.output_dir}/${chip_id}"
@@ -21,6 +23,8 @@ workflow {
     egt = Channel.fromPath(params.egt)
     pfb = file(params.pfb)
     fasta = Channel.fromPath(params.fasta)
+    band = Channel.fromPath(params.band)
+    tex_template = Channel.fromPath(params.tex_template)
 
     fasta_dir = file(params.fasta).getParent()
     print(output_dir)
@@ -41,12 +45,21 @@ workflow {
     penncnv_detect(vcf2penncnv.out, pfb)
     penncnv_clean_cnv(penncnv_detect.out, pfb)
 
-
     makesexfile.out.view()
     penncnv_clean_cnv.out.view()
 
     beds = penncnv2bed(penncnv_clean_cnv.out, makesexfile.out.first())
     classification(penncnv2bed.out)
+
+    addiscn(penncnv_clean_cnv.out, band)
+
+    bedgraphswithbeds = makebedgraphs.out.combine(beds, by:0)
+    makeplots(bedgraphswithbeds)
+
+    cnvswithscores = classification.out.combine(addiscn.out, by:0).combine(makeplots.out, by:0)
+    maketemplate(cnvswithscores, tex_template)
+
+    makereport(maketemplate.out)
 }
 
 
@@ -136,7 +149,8 @@ process makebedgraphs {
     tuple val(sampleId), path(txt)
 
     output:
-    path "*.bedgraph.gz"
+    tuple val(sampleId), path("*BAF.bedgraph.gz"), path("*LRR.bedgraph.gz")
+
 
     shell:
     '''
@@ -218,5 +232,79 @@ process classification {
     script:
     """
     python3 /ClassifyCNV/ClassifyCNV.py --infile ${bed} --GenomeBuild hg19 --precise --outdir "${sampleId}"
+    """
+}
+
+process addiscn {
+    tag "$sampleId"
+
+    input:
+    tuple val(sampleId), path(txt)
+    path(band)
+
+    output:
+    tuple val(sampleId), path ("${sampleId}_iscn.txt")
+
+    script:
+    """
+    python3 ${projectDir}/getISCN.py ${txt} ${band}
+      
+    """
+}
+
+process maketemplate {
+    tag "$sampleId"
+    publishDir "${output_dir}/texs", mode: "copy"
+
+    input:
+    tuple val(sampleId), path(scoresheet), path(cnv), path(plot_dir)
+    path(tex_template)
+
+    output:
+    tuple val(sampleId), path("${sampleId}.tex"), path(plot_dir)
+
+    script:
+    """
+    python3 tex_template_compile.py --scoresheet_file ${scoresheet} --cnv_file ${cnv} --tex_template ${tex_template} --output_file "${sampleId}.tex" --plot_dir ${plot_dir}
+    """
+}
+
+process makeplots {
+    tag "$sampleId"
+    container "/mnt/dragen/pipelines/canvas/bedgraph-visualizer_latest.sif"
+    publishDir "${output_dir}/plots", mode: "copy"
+
+    input:
+    tuple val(sampleId), path(BAF), path(LRR), path(bed)
+
+    output:
+    tuple val(sampleId), path("${sampleId}/")
+
+    script:
+    """
+    Rscript /usr/src/app/bedgraph-visualizer.R region_plot ${BAF} ${LRR} ${bed} ${sampleId}
+
+    Rscript /usr/src/app/bedgraph-visualizer.R genome_plot ${BAF} ${LRR} ${sampleId}
+    """
+}
+
+
+
+
+process makereport {
+    tag "$sampleId"
+    container '/mnt/dragen/pipelines/canvas/texlive_latest.sif'
+    publishDir "${output_dir}/pdfs", mode: "copy"
+
+    input:
+    tuple val(sampleId), path(tex), path(plot_dir)
+
+    output:
+    tuple val(sampleId), path ("${sampleId}.pdf")
+
+    script:
+    """
+    pdflatex ${tex}
+    pdflatex ${tex}
     """
 }
