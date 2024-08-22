@@ -27,7 +27,7 @@ workflow {
     tex_template = Channel.fromPath(params.tex_template)
 
     fasta_dir = file(params.fasta).getParent()
-    print(output_dir)
+    template_dir = file(params.tex_template).getParent()
 
     idat2gtc(idat_folder, bpm, egt)
     makesexfile(idat2gtc.out.sample_summary)
@@ -45,25 +45,26 @@ workflow {
     penncnv_detect(vcf2penncnv.out, pfb)
     penncnv_clean_cnv(penncnv_detect.out, pfb)
 
-    makesexfile.out.view()
-    penncnv_clean_cnv.out.view()
-
     beds = penncnv2bed(penncnv_clean_cnv.out, makesexfile.out.first())
     classification(penncnv2bed.out)
 
-    addiscn(penncnv_clean_cnv.out, band)
+    addiscn(penncnv_clean_cnv.out, band.first())
 
     bedgraphswithbeds = makebedgraphs.out.combine(beds, by:0)
     makeplots(bedgraphswithbeds)
 
-    cnvswithscores = classification.out.combine(addiscn.out, by:0).combine(makeplots.out, by:0)
-    maketemplate(cnvswithscores, tex_template)
+    cnvswithscores = classification.out.scoresheet
+        .combine(addiscn.out, by:0)
+        .combine(makeplots.out, by:0)
 
-    makereport(maketemplate.out)
+    maketemplate(cnvswithscores, tex_template)
+    makereport(maketemplate.out, template_dir)
 }
 
 
 process makesexfile {
+    memory "1 GB"
+    cpus 1
     input:
     path sample_summary
 
@@ -125,6 +126,8 @@ process gtc2vcf {
 }
 
 process vcf2penncnv {
+    memory "1 GB"
+    cpus 1
     tag "$sampleId"
     publishDir "${output_dir}/penncnv_inputs/", mode: "copy"
 
@@ -142,6 +145,8 @@ process vcf2penncnv {
 }
 
 process makebedgraphs {
+    memory "1 GB"
+    cpus 1
     tag "$sampleId"
     publishDir "${output_dir}/bedgraphs", mode: "copy"
 
@@ -160,6 +165,8 @@ process makebedgraphs {
 }
 
 process penncnv_detect {
+    memory "1 GB"
+    cpus 1
     tag "$sampleId"
     container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
     publishDir "${output_dir}/cnvs", mode: "copy"
@@ -182,6 +189,8 @@ process penncnv_detect {
 }
 
 process penncnv_clean_cnv {
+    memory "1 GB"
+    cpus 1
     tag "$sampleId"
     container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
     publishDir "${output_dir}/cnvs", mode: "copy"
@@ -201,6 +210,8 @@ process penncnv_clean_cnv {
 }
 
 process penncnv2bed {
+    memory "1 GB"
+    cpus 1
     tag "$sampleId"
     publishDir "${output_dir}/beds", mode: "copy"
 
@@ -218,6 +229,8 @@ process penncnv2bed {
 }
 
 process classification {
+    memory "1 GB"
+    cpus 1
     tag "$sampleId"
     container "/mnt/dragen/pipelines/canvas/classifycnv_1.0.sif"
     publishDir "${output_dir}/ClassifyCNV/", mode: "copy"
@@ -226,7 +239,7 @@ process classification {
     tuple val(sampleId), path(bed)
 
     output:
-    path "${sampleId}/Scoresheet.txt"
+    tuple val(sampleId), path("${sampleId}/Scoresheet.txt"), emit: scoresheet
     path "${sampleId}/Intermediate_files/*.bed"
 
     script:
@@ -236,36 +249,22 @@ process classification {
 }
 
 process addiscn {
+    memory "1 GB"
+    cpus 1
     tag "$sampleId"
+    publishDir "${output_dir}/cnvs/", mode: "copy"
 
     input:
     tuple val(sampleId), path(txt)
     path(band)
 
     output:
-    tuple val(sampleId), path ("${sampleId}_iscn.txt")
+    tuple val(sampleId), path("${sampleId}_iscn.txt")
 
     script:
     """
-    python3 ${projectDir}/getISCN.py ${txt} ${band}
-      
-    """
-}
+    python3 ${projectDir}/getISCN.py ${txt} ${band} "${sampleId}_iscn.txt"
 
-process maketemplate {
-    tag "$sampleId"
-    publishDir "${output_dir}/texs", mode: "copy"
-
-    input:
-    tuple val(sampleId), path(scoresheet), path(cnv), path(plot_dir)
-    path(tex_template)
-
-    output:
-    tuple val(sampleId), path("${sampleId}.tex"), path(plot_dir)
-
-    script:
-    """
-    python3 tex_template_compile.py --scoresheet_file ${scoresheet} --cnv_file ${cnv} --tex_template ${tex_template} --output_file "${sampleId}.tex" --plot_dir ${plot_dir}
     """
 }
 
@@ -282,29 +281,50 @@ process makeplots {
 
     script:
     """
-    Rscript /usr/src/app/bedgraph-visualizer.R region_plot ${BAF} ${LRR} ${bed} ${sampleId}
+    sed 's/^chr//' ${bed} > regions
+    Rscript /usr/src/app/bedgraph-visualizer.R region_plot ${BAF} ${LRR} regions ${sampleId}
 
     Rscript /usr/src/app/bedgraph-visualizer.R genome_plot ${BAF} ${LRR} ${sampleId}
     """
 }
 
+process maketemplate {
+    memory "1 GB"
+    cpus 1
+    tag "$sampleId"
+    publishDir "${output_dir}/texs", mode: "copy"
 
+    input:
+    tuple val(sampleId), path(scoresheet), path(cnv), path(plot_dir)
+    each path(tex_template)
+
+    output:
+    tuple val(sampleId), path("${sampleId}.tex"), path(plot_dir)
+
+    script:
+    """
+    python3 ${projectDir}/tex_template_compile.py --scoresheet_file ${scoresheet} --cnv_file ${cnv} --tex_template ${tex_template} --output_file "${sampleId}.tex" --plot_dir ${plot_dir}
+    """
+}
 
 
 process makereport {
+    memory "1 GB"
+    cpus 1
     tag "$sampleId"
     container '/mnt/dragen/pipelines/canvas/texlive_latest.sif'
     publishDir "${output_dir}/pdfs", mode: "copy"
 
     input:
     tuple val(sampleId), path(tex), path(plot_dir)
+    path(template_dir)
 
     output:
     tuple val(sampleId), path ("${sampleId}.pdf")
 
     script:
     """
+    cp "${template_dir}"/* ./
     pdflatex ${tex}
     pdflatex ${tex}
     """
-}
