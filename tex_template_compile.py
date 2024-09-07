@@ -1,3 +1,5 @@
+from datetime import date
+from pathlib import Path
 import argparse
 import csv
 
@@ -167,7 +169,19 @@ def main():
     with open(args.tex_template, "r") as in_file, open(
         args.output_file, "w"
     ) as out_file:
-        out_file.write(in_file.read().replace("%%BULGULAR%%", latex_string))
+        cnv_path = Path(args.cnv_file)
+        chip_id = cnv_path.stem.split("_")[0]
+        position = cnv_path.stem.split("_")[1]
+
+        output_template = in_file.read().replace("%%BULGULAR%%", latex_string)
+        output_template = output_template.replace("%%institute%%", args.institute)
+        output_template = output_template.replace("%%protocolId%%", args.protocol_id)
+        output_template = output_template.replace(
+            "%%summaryDate%%", date.today().strftime("%B %d, %Y")
+        )
+        output_template = output_template.replace("%%chipId%%", chip_id)
+        output_template = output_template.replace("%%chipPosition%%", position)
+        out_file.write(output_template)
 
 
 if __name__ == "__main__":
