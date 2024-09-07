@@ -21,17 +21,31 @@
 \usepackage[dvipsnames]{xcolor}   % colored text
 \usepackage{titlesec}             % title format
 \usepackage{lastpage}             % page numbering
-\usepackage{ragged2e}             % justifying content
+\usepackage{ragged2e}		  % justifying content
 
 %%%%%%%%%%%%%%%%%%  %%%%%%%%%%%%%%%%%%%%%
 
-\newcommand{\institute}{Şehir Hastanesi}
-\newcommand{\sampleId}{Şehir Hastanesi}
-\newcommand{\summaryDate}{Şehir Hastanesi}
-\newcommand{\chipId}{Şehir Hastanesi}
-\newcommand{\chipPosition}{Şehir Hastanesi}
-\newcommand{\chipType}{Şehir Hastanesi}
-\newcommand{\canvasVersion}{Şehir Hastanesi}
+\newcommand{\institute}{
+  %%institute%%
+}
+\newcommand{\sampleId}{
+  %%sampleId%%
+}
+\newcommand{\summaryDate}{
+  %%summaryDate%%
+}
+\newcommand{\chipId}{
+  %%chipId%%
+}
+\newcommand{\chipPosition}{
+  %%chipPosition%%
+}
+\newcommand{\chipType}{
+  %%chipType%%
+}
+\newcommand{\canvasVersion}{
+  %%canvasVersion%%
+}
 
 %%%%%%%%%%%%% MARKUP %%%%%%%%%%%%%%%%
 \definecolor{myfgcolor}{HTML}{2E3440}
@@ -95,19 +109,19 @@
             \bfseries{Hasta Kodu} &
             \bfseries{Tarih} &
             \bfseries{Kurum} \\
-
+            
             \sffamily \sampleId &
             \sffamily \summaryDate &
             \sffamily \institute \\
-
+            
             \bfseries{Chip Type} &
             \bfseries{Chip Id} &
             \bfseries{Position} \\
-
+            
             \sffamily \chipType &
             \sffamily \chipId &
             \sffamily \chipPosition \\
-
+            
             \hline
     \end{tabularx}%
 }
@@ -115,7 +129,7 @@
     \begin{tabularx}{\textwidth}{m{1.0cm} X m{3.0cm}}
         \sffamily{\thepage / \pageref{LastPage}} &
         \centering\bfseries\sffamily\Huge{Array Özeti} &
-        \includegraphics[width=3cm]{canvas_logo.png}
+        \includegraphics[width=3cm]{canvas_logo.png} 
     \end{tabularx}%
         \bigbreak
     \begin{tabularx}{\textwidth}{m{4.0cm} X m{4.0cm}}
@@ -123,19 +137,19 @@
             \bfseries{Hasta Kodu} &
             \bfseries{Tarih} &
             \bfseries{Kurum} \\
-
+            
             \sffamily \sampleId &
             \sffamily \summaryDate &
             \sffamily \institute \\
-
+            
             \bfseries{Chip Type} &
             \bfseries{Chip Id} &
             \bfseries{Position} \\
-
+            
             \sffamily \chipType &
             \sffamily \chipId &
             \sffamily \chipPosition \\
-
+            
             \hline
     \end{tabularx}%
 }
@@ -145,10 +159,10 @@
     \sffamily
     \begin{tabularx}{\textwidth}{m{3.0cm} X m{5.0cm} }
         \raisebox{-.6cm}{\includegraphics[width=3cm]{canvas_logo.png}} &
-
-        \makecell[tl]{\faBuilding \hspace{0.2cm} Palladium Tower İş Merkezi \\ Barbaros Mah. Kardelen Sok. Blok: 2 No: 46 \\ 34746 Ataşehir - İstanbul} &
-
-        \makecell[tl]{\faPhone \hspace{0.2cm} +90 216 455 58 22 - 23 \\ \faFax \hspace{0.2cm} +90 216 455 58 24 \\ \faEnvelope \hspace{0.2cm} info@gen-era.com.tr}
+        
+        \makecell[tl]{SNP array summary} &
+        
+        \makecell[tl]{version 0.0.1}
     \end{tabularx}%
 }
 %%%%%%%%%%%%% HEADER FOOTER SONU %%%%%%%%%%%%%%

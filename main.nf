@@ -8,7 +8,7 @@ params.egt = 'manifest-cluster/2003.egt'
 params.fasta = '/staging/references/hg19/hg19.fa'
 params.pfb = 'test/out.pfb'
 params.output_dir = 'outputs'
-params.samplesheet = 'samplesheets/chip001.tsv'
+params.samplesheet = ''
 params.idat_folder = 'idats/chip001'
 params.band = "canvas-pipeline/"
 params.tex_template = "asdadfa"
@@ -47,6 +47,8 @@ workflow {
 
     beds = penncnv2bed(penncnv_clean_cnv.out, makesexfile.out.first())
     classification(penncnv2bed.out)
+    make_cnv_bedgraphs(beds)
+    smooth_lrr(makebedgraphs.out)
 
     addiscn(penncnv_clean_cnv.out, band.first())
 
@@ -57,6 +59,24 @@ workflow {
         .combine(addiscn.out, by:0)
         .combine(makeplots.out, by:0)
 
+    if ( params.samplesheet ) {
+        samplesheet = params.samplesheet
+        samplesheet
+            .splitCsv(header:["sample_id", "protocol_id", "institute"],
+                sep:"\t",
+                skip:1
+            )
+            | map { row ->
+                [row.sample_id, row.protocol_id, row.institute]
+            }
+            | set {samplesheet}
+        cnvswithscores = cnvswithscores.combine(samplesheet, by:0)
+    }
+    else {
+        cnvswithscores = cnvswithscores.map { row ->
+            row + ['noprotocolid', 'noinstitute']
+        }
+    }
     maketemplate(cnvswithscores, tex_template)
     makereport(maketemplate.out, template_dir)
 }
@@ -164,6 +184,27 @@ process makebedgraphs {
     '''
 }
 
+
+process smooth_lrr {
+    memory "1 GB"
+    cpus 1
+    tag "$sampleId"
+    publishDir "${output_dir}/bedgraphs", mode: "copy"
+
+    input:
+    tuple val(sampleId), path(baf), path(lrr)
+
+    output:
+    tuple val(sampleId), path ("${sampleId}.LRR.smooth.bedgraph.gz")
+
+    script:
+    """
+    python3 smooth_lrr.py --input_file ${lrr} --output_file ${sampleId}.LRR.smooth.bedgraph
+    gzip ${sampleId}.LRR.smooth.bedgraph.gz
+    """
+}
+
+
 process penncnv_detect {
     memory "1 GB"
     cpus 1
@@ -228,6 +269,27 @@ process penncnv2bed {
     """
 }
 
+
+process make_cnv_bedgraphs {
+    memory "1 GB"
+    cpus 1
+    tag "$sampleId"
+    publishDir "${output_dir}/bedgraphs", mode: "copy"
+
+    input:
+    tuple val(sampleId), path(bed)
+
+    output:
+    tuple val(sampleId), path ("*.bedgraph.gz")
+
+    script:
+    """
+    awk -F"\t" '{printf "%s\t%s\t%s\t1, $1,$2,$3 }' $bed | gzip -c > ${sampleId}.CNV.pos.bedgraph.gz
+    awk -F"\t" '{printf "%s\t%s\t%s\t-1, $1,$2,$3 }' $bed | gzip -c > ${sampleId}.CNV.neg.bedgraph.gz
+    """
+}
+
+
 process classification {
     memory "1 GB"
     cpus 1
@@ -248,6 +310,7 @@ process classification {
     """
 }
 
+
 process addiscn {
     memory "1 GB"
     cpus 1
@@ -264,7 +327,6 @@ process addiscn {
     script:
     """
     python3 ${projectDir}/getISCN.py ${txt} ${band} "${sampleId}_iscn.txt"
-
     """
 }
 
@@ -303,7 +365,14 @@ process maketemplate {
 
     script:
     """
-    python3 ${projectDir}/tex_template_compile.py --scoresheet_file ${scoresheet} --cnv_file ${cnv} --tex_template ${tex_template} --output_file "${sampleId}.tex" --plot_dir ${plot_dir}
+    python3 ${projectDir}/tex_template_compile.py \
+        --scoresheet_file ${scoresheet} \
+        --cnv_file ${cnv} \
+        --tex_template ${tex_template} \
+        --output_file "${sampleId}.tex" \
+        --plot_dir ${plot_dir} \
+        --protocol_id ${protocol_id} \
+        --institute ${institute}
     """
 }
 
@@ -328,3 +397,4 @@ process makereport {
     pdflatex ${tex}
     pdflatex ${tex}
     """
+}

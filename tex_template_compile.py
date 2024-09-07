@@ -1,15 +1,28 @@
 import argparse
 import csv
 
+
 # Function to process CNV file
 def process_cnv_file(file_path):
     cnv_data = {}
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         for line in f:
             parts = line.strip().split()
-            chr_info, numsnp_info, length_info, state_info, file_info, startsnp_info, endsnp_info, conf, iscn = parts
+            (
+                chr_info,
+                numsnp_info,
+                length_info,
+                state_info,
+                file_info,
+                startsnp_info,
+                endsnp_info,
+                conf,
+                iscn,
+            ) = parts
             region = chr_info.split(":")
-            chr_start_end = f"{region[0]}_{region[1].split('-')[0]}_{region[1].split('-')[1]}"
+            chr_start_end = (
+                f"{region[0]}_{region[1].split('-')[0]}_{region[1].split('-')[1]}"
+            )
             cnv = {
                 "iscn": iscn,
                 "chr_info": chr_info,
@@ -19,31 +32,35 @@ def process_cnv_file(file_path):
                 "file_info": file_info,
                 "startsnp_info": startsnp_info,
                 "endsnp_info": endsnp_info,
-                "conf": conf
+                "conf": conf,
             }
             cnv_data[chr_start_end] = cnv
     return cnv_data
 
+
 # Function to process Scoresheet file
 def process_scoresheet_file(file_path):
     scoresheet_data = {}
-    with open(file_path, 'r') as f:
-        reader = csv.DictReader(f, delimiter='\t')
+    with open(file_path, "r") as f:
+        reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
-            variant_id = row['VariantID']
+            variant_id = row["VariantID"]
             # Remove _DEL and _DUP from VariantID
-            clean_variant_id = variant_id.replace('_DEL', '').replace('_DUP', '')
+            clean_variant_id = variant_id.replace("_DEL", "").replace("_DUP", "")
             scoresheet_data[clean_variant_id] = dict(row)
     return scoresheet_data
 
+
 def main():
     # Set up command-line argument parsing
-    parser = argparse.ArgumentParser(description='Join CNV and Scoresheet files.')
-    parser.add_argument('--cnv_file', help='Path to the CNV file')
-    parser.add_argument('--scoresheet_file', help='Path to the Scoresheet file')
-    parser.add_argument('--tex_template', help='Path to the tex file')
-    parser.add_argument('--plot_dir', help='Path to the plot directory')
-    parser.add_argument('--output_file', help='Path to the output tex file')
+    parser = argparse.ArgumentParser(description="Join CNV and Scoresheet files.")
+    parser.add_argument("--cnv_file", help="Path to the CNV file")
+    parser.add_argument("--scoresheet_file", help="Path to the Scoresheet file")
+    parser.add_argument("--tex_template", help="Path to the tex file")
+    parser.add_argument("--plot_dir", help="Path to the plot directory")
+    parser.add_argument("--institute", help="institute")
+    parser.add_argument("--sample_id", help="sample id")
+    parser.add_argument("--output_file", help="Path to the output tex file")
 
     args = parser.parse_args()
 
@@ -76,14 +93,49 @@ def main():
         cnv_conf = cnv["conf"].split("=")[1]
         iscn = cnv["iscn"].replace("_", "\\_")
 
-
-        evidences = ['1A-B', '2A', '2B', '2C', '2D', '2E', '2F', '2G', '2H', '2I', '2J', '2K', '2L', '3', '4A', '4B', '4C', '4D', '4E', '4F-H', '4I', '4J', '4K', '4L', '4M', '4N', '4O', '5A', '5B', '5C', '5D', '5E', '5F', '5G', '5H']
+        evidences = [
+            "1A-B",
+            "2A",
+            "2B",
+            "2C",
+            "2D",
+            "2E",
+            "2F",
+            "2G",
+            "2H",
+            "2I",
+            "2J",
+            "2K",
+            "2L",
+            "3",
+            "4A",
+            "4B",
+            "4C",
+            "4D",
+            "4E",
+            "4F-H",
+            "4I",
+            "4J",
+            "4K",
+            "4L",
+            "4M",
+            "4N",
+            "4O",
+            "5A",
+            "5B",
+            "5C",
+            "5D",
+            "5E",
+            "5F",
+            "5G",
+            "5H",
+        ]
         evidence_in_report = {}
         for evidence in evidences:
             evidence_value = cnv.get(evidence, 0)
             if float(evidence_value) != 0:
                 evidence_in_report[evidence] = evidence_value
-        evidence_str =  " ".join([f"{k}: {v}" for k, v in evidence_in_report.items()])
+        evidence_str = " ".join([f"{k}: {v}" for k, v in evidence_in_report.items()])
 
         latex_string += f"""
             \\subsection{{{variant_id.replace('_', ':', 1).replace('_', '-')}}}
@@ -112,10 +164,11 @@ def main():
             \\end{{center}}
         """
 
-    with open(args.tex_template, 'r') as in_file, open(args.output_file, 'w') as out_file:
-        out_file.write(
-            in_file.read().replace("%%BULGULAR%%", latex_string)
-        )
+    with open(args.tex_template, "r") as in_file, open(
+        args.output_file, "w"
+    ) as out_file:
+        out_file.write(in_file.read().replace("%%BULGULAR%%", latex_string))
+
 
 if __name__ == "__main__":
     main()
