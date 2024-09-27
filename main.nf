@@ -209,7 +209,7 @@ process penncnv_detect {
     memory "1 GB"
     cpus 1
     tag "$sampleId"
-    container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
+    container "docker://genomicslab/penncnv"
     publishDir "${output_dir}/cnvs", mode: "copy"
 
     input:
@@ -233,7 +233,7 @@ process penncnv_clean_cnv {
     memory "1 GB"
     cpus 1
     tag "$sampleId"
-    container "/mnt/dragen/pipelines/canvas/penncnv_latest.sif"
+    container "docker://genomicslab/penncnv"
     publishDir "${output_dir}/cnvs", mode: "copy"
 
     input:
@@ -294,7 +294,7 @@ process classification {
     memory "1 GB"
     cpus 1
     tag "$sampleId"
-    container "/mnt/dragen/pipelines/canvas/classifycnv_1.0.sif"
+    container "docker://fauzul/classifycnv:1.0"
     publishDir "${output_dir}/ClassifyCNV/", mode: "copy"
 
     input:
@@ -332,7 +332,7 @@ process addiscn {
 
 process makeplots {
     tag "$sampleId"
-    container "/mnt/dragen/pipelines/canvas/bedgraph-visualizer_latest.sif"
+    container "docker://yserdem/bedgraph-visualizer"
     publishDir "${output_dir}/plots", mode: "copy"
 
     input:
@@ -381,7 +381,7 @@ process makereport {
     memory "1 GB"
     cpus 1
     tag "$sampleId"
-    container '/mnt/dragen/pipelines/canvas/texlive_latest.sif'
+    container "docker://texlive/texlive"
     publishDir "${output_dir}/pdfs", mode: "copy"
 
     input:
