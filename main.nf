@@ -60,7 +60,7 @@ workflow {
         .combine(makeplots.out, by:0)
 
     if ( params.samplesheet ) {
-        samplesheet = params.samplesheet
+        samplesheet = Channel.fromPath(params.samplesheet)
         samplesheet
             .splitCsv(header:["sample_id", "protocol_id", "institute"],
                 sep:"\t",
