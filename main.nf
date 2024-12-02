@@ -93,6 +93,7 @@ workflow {
     	println("hi2")
         samplesheet = Channel.fromPath(params.samplesheet)
 	samplesheet.view()
+
         samplesheet
             .splitCsv(header:["sample_id", "protocol_id", "institute"],
                 sep:"\t",
