@@ -4,7 +4,7 @@
 \usepackage[turkish]{babel}       % turkish support
 \usepackage[T1]{fontenc}          % encoding for turkish chars
 
-\usepackage[paper=a4paper,top=0.5cm,bottom=2cm,left=1.5cm,right=1.5cm,headsep=0.5cm,headheight=5cm,includehead,includefoot,twoside
+\usepackage[paper=a4paper,top=0.5cm,bottom=1cm,left=1.5cm,right=1.5cm,headsep=0.5cm,headheight=5cm,includehead,includefoot,twoside
 %showframe
 ]{geometry}
 
@@ -28,8 +28,8 @@
 \newcommand{\institute}{
   %%institute%%
 }
-\newcommand{\sampleId}{
-  %%sampleId%%
+\newcommand{\protocolId}{
+  %%protocolId%%
 }
 \newcommand{\summaryDate}{
   %%summaryDate%%
@@ -110,7 +110,7 @@
             \bfseries{Tarih} &
             \bfseries{Kurum} \\
             
-            \sffamily \sampleId &
+            \sffamily \protocolId &
             \sffamily \summaryDate &
             \sffamily \institute \\
             
@@ -138,7 +138,7 @@
             \bfseries{Tarih} &
             \bfseries{Kurum} \\
             
-            \sffamily \sampleId &
+            \sffamily \protocolId &
             \sffamily \summaryDate &
             \sffamily \institute \\
             
@@ -154,7 +154,7 @@
     \end{tabularx}%
 }
 % Footer
-\fancyfoot[C]{%
+\fancyfoot[LO]{%
     \hrule
     \sffamily
     \begin{tabularx}{\textwidth}{m{3.0cm} X m{5.0cm} }
@@ -163,6 +163,15 @@
         \makecell[tl]{SNP array summary} &
         
         \makecell[tl]{version 0.0.1}
+    \end{tabularx}%
+}
+\fancyfoot[RE]{%
+    \hrule
+    \sffamily
+    \begin{tabularx}{\textwidth}{m{3.0cm} X m{5.0cm} }
+	\makecell[tl]{version 0.0.1} &
+        \makecell[tl]{SNP array summary} &
+        \raisebox{-.6cm}{\includegraphics[width=3cm]{canvas_logo.png}}
     \end{tabularx}%
 }
 %%%%%%%%%%%%% HEADER FOOTER SONU %%%%%%%%%%%%%%
@@ -188,9 +197,9 @@
 
 % Details
 \begin{tabular}{l l l l}
-\textsf{Kurum: \institute } & \hspace{1cm} & \textsf{Chip Type: \chipType} \\ \\
-\textsf{Protocol ID: \sampleId} & \hspace{1cm} & \textsf{Chip Barcode: \chipId} \\ \\
-\textsf{Summary date: \summaryDate} & \hspace{1cm} & \textsf{Position: \chipPosition} \\ \\
+\textsf{Kurum: \institute } & \hspace{1cm} & \textsf{Çip tipi : \chipType} \\ \\
+\textsf{Protokol ID: \protocolId} & \hspace{1cm} & \textsf{Çip Barkodu: \chipId} \\ \\
+\textsf{Özet tarihi: \summaryDate} & \hspace{1cm} & \textsf{Pozisyon: \chipPosition} \\ \\
 \end{tabular}
 
 \vspace*{3cm}

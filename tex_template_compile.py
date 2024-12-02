@@ -2,6 +2,7 @@ from datetime import date
 from pathlib import Path
 import argparse
 import csv
+import json
 
 
 # Function to process CNV file
@@ -60,33 +61,41 @@ def main():
     parser.add_argument("--scoresheet_file", help="Path to the Scoresheet file")
     parser.add_argument("--tex_template", help="Path to the tex file")
     parser.add_argument("--plot_dir", help="Path to the plot directory")
+    parser.add_argument("--protocol_id", help="protocol id")
     parser.add_argument("--institute", help="institute")
-    parser.add_argument("--sample_id", help="sample id")
+    parser.add_argument("--sample_id", help="sample_id")
     parser.add_argument("--output_file", help="Path to the output tex file")
+    parser.add_argument("--cnvs", help="Path to the premerged CNV file with scoresheet")
 
     args = parser.parse_args()
 
-    # Read and process the CNV file
-    cnv_data = process_cnv_file(args.cnv_file)
+    if args.cnvs:
+        chip_id, position = args.sample_id.split("_")
+        with open(args.cnvs) as f:
+            cnvs = json.load(f)
+    else:
+        cnv_path = Path(args.cnv_file)
+        chip_id = cnv_path.stem.split("_")[0]
+        position = cnv_path.stem.split("_")[1]
+        # Read and process the CNV file
+        cnv_data = process_cnv_file(args.cnv_file)
 
-    # Read and process the Scoresheet file
-    scoresheet_data = process_scoresheet_file(args.scoresheet_file)
+        # Read and process the Scoresheet file
+        scoresheet_data = process_scoresheet_file(args.scoresheet_file)
 
-    cnvs = {}
-    for variant_id, cnv_dict in cnv_data.items():
-        score_dict = scoresheet_data.get(variant_id, {})
-        merged_dict = {**cnv_dict, **score_dict}
-        cnvs[variant_id] = merged_dict
+        cnvs = {}
+        for variant_id, cnv_dict in cnv_data.items():
+            score_dict = scoresheet_data.get(variant_id, {})
+            merged_dict = {**cnv_dict, **score_dict}
+            cnvs[variant_id] = merged_dict
 
     latex_string = ""
-
     # Özet tablosunu yap
     for variant_id, cnv in cnvs.items():
         pass
 
     # Her varyant için ayrı ayrı subsectionlar
     for variant_id, cnv in cnvs.items():
-        print(cnv)
         if "Chromosome" not in cnv.keys():
             continue
 
@@ -135,6 +144,8 @@ def main():
         evidence_in_report = {}
         for evidence in evidences:
             evidence_value = cnv.get(evidence, 0)
+            if evidence_value == '':
+                evidence_value = 0.0
             if float(evidence_value) != 0:
                 evidence_in_report[evidence] = evidence_value
         evidence_str = " ".join([f"{k}: {v}" for k, v in evidence_in_report.items()])
@@ -162,16 +173,13 @@ def main():
             \\vspace{{0.5cm}}  % Bu kısmı boşluk eklemek için kullanıyoruz
 
             \\begin{{center}}
-            \\includegraphics[width=0.8\\textwidth]{{ {args.plot_dir}/plot_{variant_id.replace("chr", "")}.png }}
+            \\includegraphics[width=0.8\\textwidth]{{ {args.plot_dir}/plot_{variant_id.replace("chr", "").replace("_DEL", "").replace("_DUP", "")}.png }}
             \\end{{center}}
         """
 
     with open(args.tex_template, "r") as in_file, open(
         args.output_file, "w"
     ) as out_file:
-        cnv_path = Path(args.cnv_file)
-        chip_id = cnv_path.stem.split("_")[0]
-        position = cnv_path.stem.split("_")[1]
 
         output_template = in_file.read().replace("%%BULGULAR%%", latex_string)
         output_template = output_template.replace("%%institute%%", args.institute)

@@ -1,7 +1,9 @@
 #!/usr/bin/env nextflow
 
+import java.text.SimpleDateFormat
 nextflow.enable.dsl=2
 
+params.chip_id = ""
 params.bpm = 'manifest-cluster/GSACyto_20044998_A1.bpm'
 params.csv = 'gtcler/GSA-24v1-0_C1.csv'
 params.egt = 'manifest-cluster/2003.egt'
@@ -9,15 +11,40 @@ params.fasta = '/staging/references/hg19/hg19.fa'
 params.pfb = 'test/out.pfb'
 params.output_dir = 'outputs'
 params.samplesheet = ''
-params.idat_folder = 'idats/chip001'
 params.band = "canvas-pipeline/"
 params.tex_template = "asdadfa"
+params.cnvs =  ""
+params.protocol_id =  ""
+params.institute = ""
+params.sampleId = ""
+params.position = ""
 
-chip_id = file(params.idat_folder).baseName
-output_dir = "${params.output_dir}/${chip_id}"
+idat_folder = "s3://canvas/chip_data/${params.chip_id}/idats"
+output_dir = "s3://canvas/chip_data/${params.chip_id}"
 
 workflow {
-    idat_folder = Channel.fromPath(params.idat_folder)
+    if (params.cnvs) {
+        cnvs = Channel.fromPath(params.cnvs)
+        tex_template = Channel.fromPath(params.tex_template)
+        sampleId = "${params.chip_id}_${params.position}"
+        plot_dir = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/plots/${sampleId}")
+
+        println(sampleId)
+        maketemplatefromcnv(
+            cnvs,
+            sampleId,
+            plot_dir,
+            params.protocol_id,
+            params.institute,
+            tex_template
+        )
+        println(cnvs)
+        template_dir = file(params.tex_template).getParent()
+
+        makereport(maketemplatefromcnv.out, template_dir)
+    } else {
+
+    idat_folder = Channel.fromPath(idat_folder)
     bpm = Channel.fromPath(params.bpm)
     csv = Channel.fromPath(params.csv)
     egt = Channel.fromPath(params.egt)
@@ -59,8 +86,14 @@ workflow {
         .combine(addiscn.out, by:0)
         .combine(makeplots.out, by:0)
 
+
+    cnvswithscores.view()
+    println("hi0")
     if ( params.samplesheet ) {
+    	println("hi2")
         samplesheet = Channel.fromPath(params.samplesheet)
+	samplesheet.view()
+
         samplesheet
             .splitCsv(header:["sample_id", "protocol_id", "institute"],
                 sep:"\t",
@@ -70,15 +103,20 @@ workflow {
                 [row.sample_id, row.protocol_id, row.institute]
             }
             | set {samplesheet}
+	samplesheet.view()
         cnvswithscores = cnvswithscores.combine(samplesheet, by:0)
     }
     else {
-        cnvswithscores = cnvswithscores.map { row ->
-            row + ['noprotocolid', 'noinstitute']
+    	println("hi3")
+        cnvswithscores = cnvswithscores.map { _ ->
+            _ + [_[0], 'noinstitute']
         }
     }
+    cnvswithscores.view()
+    println("hi1")
     maketemplate(cnvswithscores, tex_template)
     makereport(maketemplate.out, template_dir)
+    }
 }
 
 
@@ -149,6 +187,7 @@ process vcf2penncnv {
     memory "1 GB"
     cpus 1
     tag "$sampleId"
+    container "staphb/bcftools:1.20"
     publishDir "${output_dir}/penncnv_inputs/", mode: "copy"
 
     input:
@@ -179,8 +218,8 @@ process makebedgraphs {
 
     shell:
     '''
-    awk 'BEGIN {print "track type=bedGraph name="!{sampleId} LRR" maxHeightPixels=200:200:200 graphType=points viewLimits=-2:2 windowingFunction=none color=0,0,0 altColor=0,0,0"}{printf "%s\\t%s\\t%s\\t%s\\n", $2, $3, $3, $5}' !{txt} | sed 1d | sed '/\\.$/d' | gzip -c > !{sampleId}.LRR.bedgraph.gz
-    awk 'BEGIN {print "track type=bedGraph name="!{sampleId} BAF" maxHeightPixels=200:200:200 graphType=points viewLimits=-2:2 windowingFunction=none color=0,0,0 altColor=0,0,0"}{printf "%s\\t%s\\t%s\\t%s\\n", $2, $3, $3, $6}' !{txt} | sed 1d | sed '/\\.$/d' | gzip -c > !{sampleId}.BAF.bedgraph.gz
+    awk '{printf "%s\\t%s\\t%s\\t%s\\n", $2, $3, $3, $5}' !{txt} | sed 1d | sed '/\\.$/d' | gzip -c > !{sampleId}.LRR.bedgraph.gz
+    awk '{printf "%s\\t%s\\t%s\\t%s\\n", $2, $3, $3, $6}' !{txt} | sed 1d | sed '/\\.$/d' | gzip -c > !{sampleId}.BAF.bedgraph.gz
     '''
 }
 
@@ -195,12 +234,14 @@ process smooth_lrr {
     tuple val(sampleId), path(baf), path(lrr)
 
     output:
-    tuple val(sampleId), path ("${sampleId}.LRR.smooth.bedgraph.gz")
+    tuple val(sampleId), path ("${sampleId}.LRR_smooth.bedgraph.gz")
 
     script:
     """
-    python3 smooth_lrr.py --input_file ${lrr} --output_file ${sampleId}.LRR.smooth.bedgraph
-    gzip ${sampleId}.LRR.smooth.bedgraph.gz
+    zcat ${lrr} > lrr_file
+    python3 ${projectDir}/smooth_lrr.py --input_file lrr_file --output_file ${sampleId}.LRR_smooth.bedgraph
+    rm lrr_file
+    gzip ${sampleId}.LRR_smooth.bedgraph
     """
 }
 
@@ -209,7 +250,7 @@ process penncnv_detect {
     memory "1 GB"
     cpus 1
     tag "$sampleId"
-    container "docker://genomicslab/penncnv"
+    container "genomicslab/penncnv"
     publishDir "${output_dir}/cnvs", mode: "copy"
 
     input:
@@ -233,7 +274,7 @@ process penncnv_clean_cnv {
     memory "1 GB"
     cpus 1
     tag "$sampleId"
-    container "docker://genomicslab/penncnv"
+    container "genomicslab/penncnv"
     publishDir "${output_dir}/cnvs", mode: "copy"
 
     input:
@@ -284,8 +325,8 @@ process make_cnv_bedgraphs {
 
     script:
     """
-    awk -F"\t" '{printf "%s\t%s\t%s\t1, $1,$2,$3 }' $bed | gzip -c > ${sampleId}.CNV.pos.bedgraph.gz
-    awk -F"\t" '{printf "%s\t%s\t%s\t-1, $1,$2,$3 }' $bed | gzip -c > ${sampleId}.CNV.neg.bedgraph.gz
+    awk -F"\\t" '{printf "%s\\t%s\\t%s\\t1\n", \$1, \$2, \$3}' "$bed" | gzip -c > "${sampleId}.CNV_pos.bedgraph.gz"
+    awk -F"\\t" '{printf "%s\\t%s\\t%s\\t-1\n", \$1, \$2, \$3}' "$bed" | gzip -c > "${sampleId}.CNV_neg.bedgraph.gz"
     """
 }
 
@@ -294,7 +335,7 @@ process classification {
     memory "1 GB"
     cpus 1
     tag "$sampleId"
-    container "docker://fauzul/classifycnv:1.0"
+    container "fauzul/classifycnv:1.0"
     publishDir "${output_dir}/ClassifyCNV/", mode: "copy"
 
     input:
@@ -332,7 +373,7 @@ process addiscn {
 
 process makeplots {
     tag "$sampleId"
-    container "docker://yserdem/bedgraph-visualizer"
+    container "yserdem/bedgraph-visualizer"
     publishDir "${output_dir}/plots", mode: "copy"
 
     input:
@@ -357,11 +398,11 @@ process maketemplate {
     publishDir "${output_dir}/texs", mode: "copy"
 
     input:
-    tuple val(sampleId), path(scoresheet), path(cnv), path(plot_dir)
-    each path(tex_template)
+    tuple val(sampleId), path(scoresheet), path(cnv), path(plot_dir), val(protocol_id), val(institute)
+    path tex_template
 
     output:
-    tuple val(sampleId), path("${sampleId}.tex"), path(plot_dir)
+    tuple val(sampleId), path("${sampleId}.tex"), path(plot_dir), val(protocol_id)
 
     script:
     """
@@ -372,29 +413,63 @@ process maketemplate {
         --output_file "${sampleId}.tex" \
         --plot_dir ${plot_dir} \
         --protocol_id ${protocol_id} \
-        --institute ${institute}
+        --institute "${institute}"
     """
 }
 
+process maketemplatefromcnv {
+    memory "1 GB"
+    cpus 1
+    tag "$sampleId"
+    publishDir "${output_dir}/texs", mode: "copy"
+
+    input:
+    path cnvs 
+    val sampleId 
+    path plot_dir 
+    val protocol_id 
+    val institute 
+    path tex_template
+
+    output:
+    tuple val(sampleId), path("${sampleId}.tex"), path(plot_dir), val(protocol_id)
+
+    script:
+    """
+    python3 ${projectDir}/tex_template_compile.py \
+        --tex_template ${tex_template} \
+        --sample_id ${sampleId} \
+        --output_file "${sampleId}.tex" \
+        --plot_dir ${plot_dir} \
+        --cnvs ${cnvs} \
+        --protocol_id "${protocol_id}" \
+        --institute "${institute}"
+    """
+}
 
 process makereport {
     memory "1 GB"
     cpus 1
     tag "$sampleId"
-    container "docker://texlive/texlive"
+    container "texlive/texlive"
     publishDir "${output_dir}/pdfs", mode: "copy"
 
     input:
-    tuple val(sampleId), path(tex), path(plot_dir)
-    path(template_dir)
+    tuple val(sampleId), path(tex), path(plot_dir), val(protocol_id)
+    path template_dir
 
     output:
-    tuple val(sampleId), path ("${sampleId}.pdf")
+    tuple val(sampleId), path("${sampleId}_${protocol_id}_${timestamp}.pdf")
 
     script:
+    Date now = new Date();
+    SimpleDateFormat timestamp_formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+    timestamp = timestamp_formatter.format(now)
+
     """
     cp "${template_dir}"/* ./
-    pdflatex ${tex}
-    pdflatex ${tex}
+    pdflatex ${tex} --jobname="${protocol_id}_${timestamp}.pdf"
+    pdflatex ${tex} --jobname="${protocol_id}_${timestamp}.pdf"
+    mv "${sampleId}.pdf" "${sampleId}_${protocol_id}_${timestamp}.pdf"
     """
 }

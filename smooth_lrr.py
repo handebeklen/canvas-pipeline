@@ -12,7 +12,9 @@ def get_smooth_line(input_file, output_file, smooth_num=10):
         writer = csv.writer(outfile, delimiter="\t")
 
         # Read data into a list
-        data = [(row[0], int(row[1]), float(row[3])) for row in reader]
+        data = []
+        for row in reader:
+            data.append( (row[0], int(row[1]), float(row[3])))
 
         # Group data into chunks of smooth_num
         for i in range(0, len(data), smooth_num):
