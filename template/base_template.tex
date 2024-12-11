@@ -4,7 +4,7 @@
 \usepackage[turkish]{babel}       % turkish support
 \usepackage[T1]{fontenc}          % encoding for turkish chars
 
-\usepackage[paper=a4paper,top=0.5cm,bottom=1cm,left=1.5cm,right=1.5cm,headsep=0.5cm,headheight=5cm,includehead,includefoot,twoside
+\usepackage[paper=a4paper,top=0.5cm,bottom=1.5cm,left=1.5cm,right=1.5cm,headsep=0.5cm,headheight=5cm,includehead,includefoot,twoside
 %showframe
 ]{geometry}
 
@@ -58,6 +58,7 @@
 \renewcommand{\arraystretch}{1.4}
 \renewcommand{\arrayrulewidth}{.6pt}
 \newcolumntype{J}{>{\justifying\arraybackslash}X} % New type for fully justified
+\newcolumntype{L}{>{\raggedright\arraybackslash}X} % New type for fully justified
 
 % rule thickness
 \setlength\heavyrulewidth{2pt}
@@ -104,7 +105,7 @@
         \sffamily{\thepage / \pageref{LastPage}}
     \end{tabularx}%
         \bigbreak
-    \begin{tabularx}{\textwidth}{m{4.0cm} X m{4.0cm}}
+    \begin{tabularx}{\textwidth}{m{7.0cm} L m{4.0cm}}
             \hline
             \bfseries{Hasta Kodu} &
             \bfseries{Tarih} &
@@ -114,8 +115,8 @@
             \sffamily \summaryDate &
             \sffamily \institute \\
             
-            \bfseries{Chip Type} &
-            \bfseries{Chip Id} &
+            \bfseries{Çip tipi} &
+            \bfseries{Çip barkodu} &
             \bfseries{Position} \\
             
             \sffamily \chipType &
@@ -132,7 +133,7 @@
         \includegraphics[width=3cm]{canvas_logo.png} 
     \end{tabularx}%
         \bigbreak
-    \begin{tabularx}{\textwidth}{m{4.0cm} X m{4.0cm}}
+    \begin{tabularx}{\textwidth}{m{7.0cm} L m{4.0cm}}
             \hline
             \bfseries{Hasta Kodu} &
             \bfseries{Tarih} &
@@ -142,8 +143,8 @@
             \sffamily \summaryDate &
             \sffamily \institute \\
             
-            \bfseries{Chip Type} &
-            \bfseries{Chip Id} &
+            \bfseries{Çip tipi} &
+            \bfseries{Çip barkodu} &
             \bfseries{Position} \\
             
             \sffamily \chipType &
@@ -154,22 +155,22 @@
     \end{tabularx}%
 }
 % Footer
-\fancyfoot[LO]{%
+\fancyfoot[RE]{%
     \hrule
     \sffamily
-    \begin{tabularx}{\textwidth}{m{3.0cm} X m{5.0cm} }
+    \begin{tabularx}{\textwidth}{m{7.0cm} m{7.0cm} m{3.0cm} }
         \raisebox{-.6cm}{\includegraphics[width=3cm]{canvas_logo.png}} &
         
         \makecell[tl]{SNP array summary} &
         
-        \makecell[tl]{version 0.0.1}
+        \makecell[tl]{\canvasVersion}
     \end{tabularx}%
 }
-\fancyfoot[RE]{%
+\fancyfoot[LO]{%
     \hrule
     \sffamily
-    \begin{tabularx}{\textwidth}{m{3.0cm} X m{5.0cm} }
-	\makecell[tl]{version 0.0.1} &
+    \begin{tabularx}{\textwidth}{m{7.0cm} m{7.0cm} m{3.0cm} }
+	\makecell[tl]{\canvasVersion} &
         \makecell[tl]{SNP array summary} &
         \raisebox{-.6cm}{\includegraphics[width=3cm]{canvas_logo.png}}
     \end{tabularx}%
@@ -218,20 +219,94 @@
 
 %%BULGULAR%%
 
-\section{Genom resmi}
-
+%\section{Genom resmi}
+%
 %\begin{center}
-%\includegraphics[height=18cm]{plot_genome.png}
+%\includegraphics[height=18cm]{%%genome_plot%%}
 %\end{center}
 
-\section{Yöntem}
+\section{Yöntem ve Limitasyonlar}
 
-\section{Limitasyonlar}
+Teslim alınan DNA örnekleri Illumina Infinium Global Screening Array-24 v1.0 (GSA-Cyto) mikroarray çipi ile çalışılmış ve Illumina iScan platformunda taraması yapılmıştır. Bu yöntem ile örneğin tüm genomu ~700,000 probe ile taranmaktadır, yaklaşık 4485 gen hedeflenmektedir. Illumina mikroarray çip problarının medyan aralığı ~3.9kb/2.3kb’dır. Ortalama çözünürlüğü ~10kb / ~25kb’dır.
+
+Gerçekleştirilen çalışmada, DNA örneğinin analizi sonrasında hesaplanan genotipleme oranı (Call Rate)>0.99 olduğu tespit edilmiştir. Bu değer SNP belirteçlerinin çok yüksek doğruluk oranı ile genotiplendirildiğini göstermektedir. CNV (Copy Number Variation) analizii tüm genom SNP verisinden BAF ve LRR değerleri dikkate alınarak hesaplanmıştır. Kopya sayısı varyasyonları Biodiscovery tarafından geliştirilen NxClinical (v.6.0) analiz programları aracılığıyla tespit edilmekte ve görselleştirilmektedir. İlgili pozisyonlar Human Genome Build 37 (GRCh37/hg19) referans alınarak raporlanmışır.
+
+BAF (B Allel Frekansı): İlgili SNP için B alleli sinyalinin toplam sinyal miktarına oranını gösterir. 0 ve 1 değerleri homozigotluğu, 0.5 değeri heterozigotluğu gösterir. Kopya sayısı değişimlerinde veya mozaizim durumlarında ara değerler (örn: 0.25 / 0.75) alabilir. 
+
+LRR (Log R Ratio): Belirtilen SNP için ortalama toplam sinyal miktarının logaritmik ifadesidir. Kopya sayısı hakkında bilgi verir. 0 değeri 2 kopya sayısını, pozitif değerler artmış, negatif  değerler  ise  azalmış  kopya sayısını işaret eder.
+
+Tespiti yapılan varyantlar, ISCN 2020 nomenklatürüne göre adlandırılmıştır.
+
+Bu yöntem ile yapılan çalışmalar sonucunda nokta mutasyonları, kromozomların sentromerik, subtelomerik ve heterokromatin bölgelerindeki bulgular, çok küçük delesyonlar (<100 Kb) ya da duplikasyonlar, segmental duplikasyonlar gibi dizi tekrarları, düşük oranlı mozaisizm (<\%20), resiprokal ve robertsonian translokasyonlar gibi dengeli kromozomal değişiklikler kapsam dışında bırakılmıştır. Tespit edilen bulguların farklı yöntemlerle teyidi önerilir. Bulguların ailesel geçişli olup olmaması ebeveynlerden istenen çalışmalar ile belirlenebilir.
 
 \section{Kanıtlar ve Sınıflandırma}
 
-\section{Referanslar}
+Kopya kaybı için:
+\begin{description}
+	\item[1A.] Protein kodlanan bir bölge veya işlevsel olarak önemli olduğu bilinen bölge içermektedir.
+	\item[1B.] Protein kodlanan veya işlevsel olarak önemli olduğu bilinen herhangi bir bölge içermemektedir.
+	\item[2A.] Bilinen bir HI (Haploinsufficient) geni/ genomik bölge ile tam örtüşmektedir. 
+	\item[2F.] Bilinen Benin bir bölge ile tam örtüşmektedir.
+	\item[2H.] Çoklu HI öngörücüleri, aralıktaki EN AZ BİR genin haployetersizliği olduğunu göstermektedir.
+	\item[3A.] Bölgedeki Protein Kodlayan Gen Sayısı: 0-24 gen
+	\item[3B.] Bölgedeki Protein Kodlayan Gen Sayısı: 25-34 gen
+	\item[3C.] Bölgedeki Protein Kodlayan Gen Sayısı: 35 gen ve fazlası
+	\item[4L.] Kontrollere kıyasla vakalarda (tutarlı, spesifik, iyi tanımlanmış bir fenotip ile) gözlemler arasında istatistiksel olarak anlamlı artış bulunmaktadır.
+	\item[4M.] Kontrollere kıyasla vakalardaki gözlemler arasında istatistiksel olarak anlamlı artış bulunmaktadır. (tutarlı, spesifik olmayan fenotip VEYA bilinmeyen fenotip olmadan)
+	\item[4N.] Vakalar ve kontrolleri arasında istatistiksel olarak anlamlı bir fark yoktur.
+	\item[4O.] Yaygın popülasyon varyasyonu ile örtüşme vardır (> \%1). 
+\end{description}
 
+Kopya kazancı için:
+\begin{description}
+\item[1A.] Protein kodlanan bir bölge veya işlevsel olarak önemli olduğu bilinen bölge içermektedir.
+\item[1B.] Protein kodlanan veya işlevsel olarak önemli olduğu bilinen herhangi bir bölge içermemektedir.
+\item[2A.] Bilinen bir HI (Haploinsufficient) geni/genomik bölge ile tam örtüşmektedir. 
+\item[2C.] Bilinen benin bir bölge içermektedir.
+\item[2D.] Bilinen benin kopya sayısı kazancından daha küçük ve ek protein kodlayan genler içermemektedir
+\item[2E.] Bilinen benin kopya sayısı kazancından daha büyük, ek protein kodlayan genler içermemektedir.
+\item[3A.] Bölgedeki Protein Kodlayan Gen Sayısı: 0-34 gen
+\item[3B.] Bölgedeki Protein Kodlayan Gen Sayısı: 35-49 gen
+\item[3C.] Bölgedeki Protein Kodlayan Gen Sayısı: 50 gen ve fazlası
+\item[4L.] Kontrollere kıyasla vakalarda (tutarlı, spesifik, iyi tanımlanmış bir fenotip ile) gözlemler arasında istatistiksel olarak anlamlı artış bulunmaktadır.
+\item[4M.] Kontrollere kıyasla vakalardaki gözlemler arasında istatistiksel olarak anlamlı artış bulunmaktadır. (tutarlı, spesifik olmayan fenotip VEYA bilinmeyen fenotip olmadan)
+\item[4N.] Vakalar ve kontrolleri arasında istatistiksel olarak anlamlı bir fark yoktur.
+\item[4O.] Yaygın popülasyon varyasyonu ile örtüşme vardır (> \%1). 
+\end{description}
 
+Bu analiz notlarında sadece klinik bilgiler ile uyumlu ya da analiz sırasında anlamlı bulunan kopya sayısı değişimleri paylaşılmaktadır. Klinik ile bir ilişkisi bulunmayan ya da hakkında veri tabanlarında kesin bir bilgisi olmayan ve benin/muhtemel benin sınıfında olan değişimler analiz notlarına eklenmemiştir.
+
+Hazırlanan bu analiz notu genetik tanı uzmanı tarafından incelenmeli ve rapor haline getirilmelidir. Sonuçlar klinik temelde ve literatür verileri eşliğinde değerlendirilmelidir.
+
+\begin{thebibliography}{9}
+	\bibitem{clingen}
+		ClinGen: https://www.clinicalgenome.org/, ClinGen Dosage Sensitivity Curation Page: https://dosage.clinicalgenome.org/
+	\bibitem{isca}
+		The International Standard Cytogenomic Array (ISCA) Consortium: http://dbsearch.clinicalgenome.org/search/
+	\bibitem{decipher}
+		DECIPHER database: www.decipher.sanger.ac.uk
+	\bibitem{rare}
+		UNIQUE Database: http://www.rarechromo.org
+	\bibitem{orpha}
+		OrphaNet: http://www.orpha.net
+	\bibitem{dgv}
+		Database of Genomic Variants: http://dgv.tcag.ca
+	\bibitem{clinvar}
+		ClinVar: https://www.ncbi.nlm.nih.gov/clinvar/
+	\bibitem{hgmd}
+		HGMD® (Human Gene Mutation Database) Professional 2020.1
+	\bibitem{omim}
+		OMIM (Online Mendelian Inheritance in Man): https://www.omim.org/
+	\bibitem{dbsnp}
+		dbSNP: https://www.ncbi.nlm.nih.gov/snp/
+	\bibitem{ncbiview}
+		NCBI Variation Viewer database: https://www.ncbi.nlm.nih.gov/variation/view/
+	\bibitem{hpo}
+		HPO (The Human Phenotype Ontology): https://hpo.jax.org/app/
+	\bibitem{acmg}
+		Technical standards for the interpretation and reporting of constitutional copy-number variants: a joint consensus recommendation of the American College of Medical Genetics and Genomics (ACMG) and the Clinical Genome Resource (ClinGen). Riggs ER er al., 2020 Genet Med. 22(2):245-257 (PMID: 31690835).
+	\bibitem{jordan}
+		McGowan-Jordan, Jean, Ros J. Hastings, and Sarah Moore, eds. ISCN 2020: An International System for Human Cytogenomic Nomenclature (2020). Reprint Of: Cytogenetic and Genome Research 2020, Vol. 160, No. 7-8. Karger, S, 2020.
+\end{thebibliography}
 
 \end{document}

@@ -18,6 +18,8 @@ params.protocol_id =  ""
 params.institute = ""
 params.sampleId = ""
 params.position = ""
+params.chip_type = ""
+params.version = ""
 
 idat_folder = "s3://canvas/chip_data/${params.chip_id}/idats"
 output_dir = "s3://canvas/chip_data/${params.chip_id}"
@@ -36,6 +38,8 @@ workflow {
             plot_dir,
             params.protocol_id,
             params.institute,
+            params.chip_type,
+            params.version,
             tex_template
         )
         println(cnvs)
@@ -325,8 +329,8 @@ process make_cnv_bedgraphs {
 
     script:
     """
-    awk -F"\\t" '{printf "%s\\t%s\\t%s\\t1\n", \$1, \$2, \$3}' "$bed" | gzip -c > "${sampleId}.CNV_pos.bedgraph.gz"
-    awk -F"\\t" '{printf "%s\\t%s\\t%s\\t-1\n", \$1, \$2, \$3}' "$bed" | gzip -c > "${sampleId}.CNV_neg.bedgraph.gz"
+    awk -F"\\t" '{printf "%s\\t%s\\t%s\\t1\\n", \$1, \$2, \$3}' "$bed" | gzip -c > "${sampleId}.CNV_pos.bedgraph.gz"
+    awk -F"\\t" '{printf "%s\\t%s\\t%s\\t-1\\n", \$1, \$2, \$3}' "$bed" | gzip -c > "${sampleId}.CNV_neg.bedgraph.gz"
     """
 }
 
@@ -412,7 +416,7 @@ process maketemplate {
         --tex_template ${tex_template} \
         --output_file "${sampleId}.tex" \
         --plot_dir ${plot_dir} \
-        --protocol_id ${protocol_id} \
+        --protocol_id "${protocol_id}" \
         --institute "${institute}"
     """
 }
@@ -429,6 +433,8 @@ process maketemplatefromcnv {
     path plot_dir 
     val protocol_id 
     val institute 
+    val chip_type 
+    val version 
     path tex_template
 
     output:
@@ -443,7 +449,9 @@ process maketemplatefromcnv {
         --plot_dir ${plot_dir} \
         --cnvs ${cnvs} \
         --protocol_id "${protocol_id}" \
-        --institute "${institute}"
+        --institute "${institute}" \
+        --chip_type "${chip_type}" \
+        --version "${version}"
     """
 }
 
