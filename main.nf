@@ -41,6 +41,9 @@ workflow {
         lrr = "s3://canvas/chip_data/${params.chip_id}/bedgraphs/${sampleId}.LRR.bedgraph.gz"
 
         makesexfile(sample_summary)
+        if (params.snap_probes == "true") {
+            bed = snap_probes(sampleId, params.cnv_pk, bed, lrr).out
+        }
 
         cnv_addiscn(bed, band)
         cnv_classification_bed(bed, makesexfile.out.first())
@@ -599,5 +602,21 @@ process cnv_make_bedgraphs {
     """
     awk -F"\\t" '{printf "%s\\t%s\\t%s\\t1\\n", \$1, \$2, \$3}' "$bed" | gzip -c > "${sampleId}_${cnv_pk}.CNV_pos.bedgraph.gz"
     awk -F"\\t" '{printf "%s\\t%s\\t%s\\t-1\\n", \$1, \$2, \$3}' "$bed" | gzip -c > "${sampleId}_${cnv_pk}.CNV_neg.bedgraph.gz"
+    """
+}
+
+process snap_probes {
+    memory "1 GB"
+    cpus 1
+    tag "$sampleId"
+    input:
+    tuple val(sampleId), val(cnv_pk), path(bed), path(lrr)
+
+    output:
+    path("${sampleId}_${cnv_pk}.bed")
+
+    script:
+    """
+    python3 ${projectDir}/snap_probes.py --bed ${bed} --lrr ${lrr} --output "${sampleId}_${cnv_pk}.bed"
     """
 }
