@@ -33,19 +33,24 @@ workflow {
         sampleId = "${params.chip_id}_${params.position}"
         band = Channel.fromPath(params.band)
         bed = Channel.fromPath(params.cnv_bed)
-        bed = bed.map { bed -> [sampleId, cnv_pk, bed] }
+        bed = bed.map { bed -> [sampleId, params.cnv_pk, bed] }
+        sample_summary = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/gtcs/gt_sample_summary.csv")
+
         plot_dir = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/plots/${sampleId}")
         baf = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/bedgraphs/${sampleId}.BAF.bedgraph.gz")
         lrr = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/bedgraphs/${sampleId}.LRR.bedgraph.gz")
 
+        makesexfile(sample_summary)
+
         cnv_addiscn(bed, band)
-        cnv_classification_bed(bed)
+        cnv_classification_bed(bed, band, makesexfile.out.first())
         cnv_classification(cnv_classification_bed.out)
 
-        bed_with_baf_lrr = cnv_classification_bed.out.combine(baf, lrr, by:0)
+
+        bed_with_baf_lrr = cnv_classification_bed.out.map { bed -> [sampleId, bed.cnv_pk, bed, baf, lrr] }
         cnv_makeplots(bed_with_baf_lrr)
 
-        cnv_make_bedgraphs(cnv_classification.out)
+        cnv_make_bedgraphs(cnv_classification_bed.out)
     } else if (params.cnvs) {
         cnvs = Channel.fromPath(params.cnvs)
         println("cnvs")
@@ -528,13 +533,14 @@ process cnv_classification_bed {
 
     input:
     tuple val(sampleId), val(cnv_pk), path(txt)
+    path(sex_file)
 
     output:
     tuple val(sampleId), val(cnv_pk), path("${sampleId}_${cnv_pk}.bed")
 
     script:
     """
-    python3 ${projectDir}/cnv_to_bed.py --cnv ${txt} --band ${band} --output "${sampleId}_${cnv_pk}.bed"
+    python3 ${projectDir}/penncnv2bed.py --input_file ${txt} --output_file ${sampleId}_${cnv_pk}.bed --sex_file ${sex_file}
     """
 }   
 
