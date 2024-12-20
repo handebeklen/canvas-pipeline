@@ -41,8 +41,9 @@ workflow {
         lrr = "s3://canvas/chip_data/${params.chip_id}/bedgraphs/${sampleId}.LRR.bedgraph.gz"
 
         makesexfile(sample_summary)
-        if (params.snap_probes == "true") {
-            bed = snap_probes(sampleId, params.cnv_pk, bed, lrr).out
+
+        if (params.snap_probes.toBoolean()) {
+            snap_probes(bed, lrr)
         }
 
         cnv_addiscn(bed, band)
@@ -574,10 +575,10 @@ process cnv_makeplots {
     publishDir "${output_dir}/plots", mode: "copy"
 
     input:
-    tuple val(sampleId), val(cnv_pk), path(BAF), path(LRR), path(bed)
+        tuple val(sampleId), val(cnv_pk), path(BAF), path(LRR), path(bed)
 
     output:
-    tuple val(sampleId), path("${sampleId}/")
+     tuple val(sampleId), path("${sampleId}/")
 
     script:
     """
@@ -610,10 +611,11 @@ process snap_probes {
     cpus 1
     tag "$sampleId"
     input:
-    tuple val(sampleId), val(cnv_pk), path(bed), path(lrr)
+    tuple val(sampleId), val(cnv_pk), path(bed)
+    path(lrr)
 
     output:
-    path("${sampleId}_${cnv_pk}.bed")
+    path("${sampleId}_${cnv_pk}.bed"), emit: bed
 
     script:
     """
