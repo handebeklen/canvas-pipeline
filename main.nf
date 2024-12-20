@@ -616,10 +616,10 @@ process snap_probes {
     path(lrr)
 
     output:
-    path("${sampleId}_${cnv_pk}.bed"), emit: bed
+    path("snapped.bed"), emit: bed
 
     script:
     """
-    python3 ${projectDir}/snap_probes.py --bed ${bed} --lrr ${lrr} --output "${sampleId}_${cnv_pk}.bed"
+    python3 ${projectDir}/snap_probes.py --bed ${bed} --lrr ${lrr} --output snapped.bed
     """
 }

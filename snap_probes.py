@@ -36,7 +36,7 @@ def find_closest_probes(chrom, start, end, lrr_data):
         if end >= positions[-1]:
             right_probe = positions[-1]
         else:
-            for pos in reversed(positions):
+            for pos in positions:
                 if pos >= end:
                     right_probe = pos
                     break
