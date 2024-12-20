@@ -43,11 +43,11 @@ workflow {
         makesexfile(sample_summary)
 
         cnv_addiscn(bed, band)
-        cnv_classification_bed(bed, band, makesexfile.out.first())
+        cnv_classification_bed(bed, makesexfile.out.first())
         cnv_classification(cnv_classification_bed.out)
 
 
-        bed_with_baf_lrr = cnv_classification_bed.out.map { bed -> [sampleId, bed.cnv_pk, bed, baf, lrr] }
+        bed_with_baf_lrr = cnv_classification_bed.out.map { bed -> [sampleId, params.cnv_pk, baf, lrr, bed] }
         cnv_makeplots(bed_with_baf_lrr)
 
         cnv_make_bedgraphs(cnv_classification_bed.out)
@@ -540,7 +540,7 @@ process cnv_classification_bed {
 
     script:
     """
-    python3 ${projectDir}/penncnv2bed.py --input_file ${txt} --output_file ${sampleId}_${cnv_pk}.bed --sex_file ${sex_file}
+    python3 ${projectDir}/penncnv2bed.py --input_file ${txt} --sample_id ${sampleId} --format bed --output_file ${sampleId}_${cnv_pk}.bed --sex_file ${sex_file}
     """
 }   
 
@@ -574,14 +574,12 @@ process cnv_makeplots {
     tuple val(sampleId), val(cnv_pk), path(BAF), path(LRR), path(bed)
 
     output:
-    tuple val(sampleId), path("${sampleId}_${cnv_pk}/")
+    tuple val(sampleId), path("${sampleId}/")
 
     script:
     """
     sed 's/^chr//' ${bed} > regions
-    Rscript /usr/src/app/bedgraph-visualizer.R region_plot ${BAF} ${LRR} regions ${sampleId}_${cnv_pk}
-
-    Rscript /usr/src/app/bedgraph-visualizer.R genome_plot ${BAF} ${LRR} ${sampleId}_${cnv_pk}
+    Rscript /usr/src/app/bedgraph-visualizer.R region_plot ${BAF} ${LRR} regions ${sampleId}
     """
 }
 
