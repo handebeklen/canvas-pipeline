@@ -21,12 +21,34 @@ params.position = ""
 params.chip_type = ""
 params.version = ""
 
+params.cnv_bed = ""
+params.cnv_pk = ""
+params.snap_probes = ""
+
 idat_folder = "s3://canvas/chip_data/${params.chip_id}/idats"
 output_dir = "s3://canvas/chip_data/${params.chip_id}"
 
 workflow {
-    if (params.cnvs) {
+    if (params.cnv_bed) {
+        sampleId = "${params.chip_id}_${params.position}"
+        band = Channel.fromPath(params.band)
+        bed = Channel.fromPath(params.cnv_bed)
+        bed = bed.map { bed -> [sampleId, cnv_pk, bed] }
+        plot_dir = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/plots/${sampleId}")
+        baf = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/bedgraphs/${sampleId}.BAF.bedgraph.gz")
+        lrr = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/bedgraphs/${sampleId}.LRR.bedgraph.gz")
+
+        cnv_addiscn(bed, band)
+        cnv_classification_bed(bed)
+        cnv_classification(cnv_classification_bed.out)
+
+        bed_with_baf_lrr = cnv_classification_bed.out.combine(baf, lrr, by:0)
+        cnv_makeplots(bed_with_baf_lrr)
+
+        cnv_make_bedgraphs(cnv_classification.out)
+    } else if (params.cnvs) {
         cnvs = Channel.fromPath(params.cnvs)
+        println("cnvs")
         tex_template = Channel.fromPath(params.tex_template)
         sampleId = "${params.chip_id}_${params.position}"
         plot_dir = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/plots/${sampleId}")
@@ -92,9 +114,7 @@ workflow {
 
 
     cnvswithscores.view()
-    println("hi0")
     if ( params.samplesheet ) {
-    	println("hi2")
         samplesheet = Channel.fromPath(params.samplesheet)
 	samplesheet.view()
 
@@ -111,13 +131,11 @@ workflow {
         cnvswithscores = cnvswithscores.combine(samplesheet, by:0)
     }
     else {
-    	println("hi3")
         cnvswithscores = cnvswithscores.map { _ ->
             _ + [_[0], 'noinstitute']
         }
     }
     cnvswithscores.view()
-    println("hi1")
     maketemplate(cnvswithscores, tex_template)
     makereport(maketemplate.out, template_dir)
     }
@@ -371,7 +389,7 @@ process addiscn {
 
     script:
     """
-    python3 ${projectDir}/getISCN.py ${txt} ${band} "${sampleId}_iscn.txt"
+    python3 ${projectDir}/getISCN.py --cnv ${txt} --band ${band} --output "${sampleId}_iscn.txt"
     """
 }
 
@@ -479,5 +497,103 @@ process makereport {
     pdflatex ${tex} --jobname="${protocol_id}_${timestamp}.pdf"
     pdflatex ${tex} --jobname="${protocol_id}_${timestamp}.pdf"
     mv "${sampleId}.pdf" "${sampleId}_${protocol_id}_${timestamp}.pdf"
+    """
+}
+
+
+process cnv_addiscn {
+    memory "1 GB"
+    cpus 1
+    tag "$sampleId"
+    publishDir "${output_dir}/cnvs/", mode: "copy"
+
+    input:
+    tuple val(sampleId), val(cnv_pk), path(txt)
+    path(band)
+
+    output:
+    tuple val(sampleId), val(cnv_pk), path("${sampleId}_${cnv_pk}_iscn.txt")
+
+    script:
+    """
+    python3 ${projectDir}/getISCN.py --bed ${txt} --band ${band} --output "${sampleId}_${cnv_pk}_iscn.txt"
+    """
+}
+
+process cnv_classification_bed {
+    memory "1 GB"
+    cpus 1
+    tag "$sampleId"
+    publishDir "${output_dir}/beds", mode: "copy"
+
+    input:
+    tuple val(sampleId), val(cnv_pk), path(txt)
+
+    output:
+    tuple val(sampleId), val(cnv_pk), path("${sampleId}_${cnv_pk}.bed")
+
+    script:
+    """
+    python3 ${projectDir}/cnv_to_bed.py --cnv ${txt} --band ${band} --output "${sampleId}_${cnv_pk}.bed"
+    """
+}   
+
+process cnv_classification {
+    memory "1 GB"
+    cpus 1
+    tag "$sampleId"
+    container "fauzul/classifycnv:1.0"
+    publishDir "${output_dir}/ClassifyCNV/", mode: "copy"
+
+    input:
+    tuple val(sampleId), val(cnv_pk), path(bed)
+
+    output:
+    tuple val(sampleId), val(cnv_pk), path("${sampleId}_${cnv_pk}/Scoresheet.txt"), emit: scoresheet
+    path "${sampleId}_${cnv_pk}/Intermediate_files/*.bed"
+
+    script:
+    """
+    python3 /ClassifyCNV/ClassifyCNV.py --infile ${bed} --GenomeBuild hg19 --precise --outdir "${sampleId}_${cnv_pk}"
+    """
+}
+
+
+process cnv_makeplots {
+    tag "$sampleId"
+    container "yserdem/bedgraph-visualizer"
+    publishDir "${output_dir}/plots", mode: "copy"
+
+    input:
+    tuple val(sampleId), val(cnv_pk), path(BAF), path(LRR), path(bed)
+
+    output:
+    tuple val(sampleId), path("${sampleId}_${cnv_pk}/")
+
+    script:
+    """
+    sed 's/^chr//' ${bed} > regions
+    Rscript /usr/src/app/bedgraph-visualizer.R region_plot ${BAF} ${LRR} regions ${sampleId}_${cnv_pk}
+
+    Rscript /usr/src/app/bedgraph-visualizer.R genome_plot ${BAF} ${LRR} ${sampleId}_${cnv_pk}
+    """
+}
+
+process cnv_make_bedgraphs {
+    memory "1 GB"
+    cpus 1
+    tag "$sampleId"
+    publishDir "${output_dir}/bedgraphs", mode: "copy"
+
+    input:
+    tuple val(sampleId), val(cnv_pk), path(bed)
+
+    output:
+    tuple val(sampleId), path ("${sampleId}_${cnv_pk}.bedgraph.gz")
+
+    script:
+    """
+    awk -F"\\t" '{printf "%s\\t%s\\t%s\\t1\\n", \$1, \$2, \$3}' "$bed" | gzip -c > "${sampleId}_${cnv_pk}.CNV_pos.bedgraph.gz"
+    awk -F"\\t" '{printf "%s\\t%s\\t%s\\t-1\\n", \$1, \$2, \$3}' "$bed" | gzip -c > "${sampleId}_${cnv_pk}.CNV_neg.bedgraph.gz"
     """
 }

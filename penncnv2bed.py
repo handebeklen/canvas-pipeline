@@ -36,21 +36,52 @@ def is_in_par(chr_num, start, end, genome_version="GRCh37"):
     return False
 
 
-def transform_data(input_file, output_file, sex_file, genome_version):
+def process_penncnv_line(line, genders, genome_version):
+    parts = line.strip().split()
+    chr_info, numsnp_info, length_info, state_info, file_info, startsnp_info, endsnp_info, conf = parts
+    chr_num, start_end = chr_info.split(':')
+    start, end = start_end.split('-')
+    cn = int(state_info.split(',')[1].split('=')[1])
+
+    sample_id = file_info.split('.')[0]  # Assuming the sample ID is part of the file name
+    sex = genders.get(sample_id, "Unknown")
+
+    return chr_num, start, end, cn, sex
+
+
+def process_bed_line(line, genders, sample_id):
+    parts = line.strip().split()
+    if len(parts) < 4:
+        return None
+    
+    chr_num = f"chr{parts[0]}" if not parts[0].startswith('chr') else parts[0]
+    start = parts[1]
+    end = parts[2]
+    cn = int(parts[3])
+    sex = genders.get(sample_id, "Unknown")
+    
+    return chr_num, start, end, cn, sex
+
+
+def transform_data(input_file, output_file, sex_file, genome_version, input_format="penncnv", sample_id=None):
     with open(input_file, 'r') as infile, open(sex_file, 'r') as sexfile, open(output_file, 'w') as outfile:
         genders = {line.split()[0]: line.split()[1] for line in sexfile.read().splitlines()}
         num_input = 0
         num_output = 0
+        
         for line in infile:
             num_input += 1
-            parts = line.strip().split()
-            chr_info, numsnp_info, length_info, state_info, file_info, startsnp_info, endsnp_info, conf = parts
-            chr_num, start_end = chr_info.split(':')
-            start, end = start_end.split('-')
-            cn = int(state_info.split(',')[1].split('=')[1])
-
-            sample_id = file_info.split('.')[0]  # Assuming the sample ID is part of the file name
-            sex = genders.get(sample_id, "Unknown")
+            
+            # Process line based on input format
+            if input_format == "penncnv":
+                result = process_penncnv_line(line, genders, genome_version)
+            else:  # bed format
+                result = process_bed_line(line, genders, sample_id)
+                
+            if not result:
+                continue
+                
+            chr_num, start, end, cn, sex = result
 
             if chr_num in ["chrX", "chrY"]:
                 if sex == "M":
@@ -77,15 +108,21 @@ def transform_data(input_file, output_file, sex_file, genome_version):
 
 def main():
     parser = argparse.ArgumentParser(description="Transform genomic data to desired format.")
-    parser.add_argument("--input_file", help="The input file containing genomic data.")
-    parser.add_argument("--output_file", help="The output file to write transformed data.")
-    parser.add_argument("--sex_file", help="Tab-separated genders of the samples")
+    parser.add_argument("--input_file", required=True, help="The input file containing genomic data.")
+    parser.add_argument("--output_file", required=True, help="The output file to write transformed data.")
+    parser.add_argument("--sex_file", required=True, help="Tab-separated genders of the samples")
     parser.add_argument("--genome_version", default="GRCh37", help="Genome version to use for PAR regions (GRCh37 or GRCh38)")
+    parser.add_argument("--format", choices=["penncnv", "bed"], default="penncnv", 
+                        help="Input file format (penncnv or bed)")
+    parser.add_argument("--sample_id", help="Sample ID for bed file input (required if format is bed)")
 
     args = parser.parse_args()
 
-    # Pass the genome_version argument to transform_data
-    transform_data(args.input_file, args.output_file, args.sex_file, args.genome_version)
+    if args.format == "bed" and not args.sample_id:
+        parser.error("--sample_id is required when using bed format")
+
+    transform_data(args.input_file, args.output_file, args.sex_file, 
+                  args.genome_version, args.format, args.sample_id)
     print(f"Transformed data has been written to {args.output_file}")
 
 
