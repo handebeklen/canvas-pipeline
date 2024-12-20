@@ -69,7 +69,7 @@ def process_probes(bed_file, lrr_file, output_file):
     # Process BED file and find closest probes
     with open(bed_file, 'r') as bed_f, open(output_file, 'w') as out_f:
         for line in bed_f:
-            chrom, start, end, *rest = line.strip().split()
+            chrom, start, end, cn = line.strip().split()
             # Add chr prefix if not present
             chrom = f"chr{chrom}" if not chrom.startswith('chr') else chrom
             start = int(start)
@@ -79,7 +79,7 @@ def process_probes(bed_file, lrr_file, output_file):
             
             if left_probe is not None and right_probe is not None:
                 # Write output in BED format with original CNV and probe positions
-                out_f.write(f"{chrom}\t{left_probe}\t{right_probe}\t{start}\t{end}\t{'\t'.join(rest)}\n")
+                out_f.write(f"{chrom}\t{left_probe}\t{right_probe}\t{cn}\n")
 
 def main():
     parser = argparse.ArgumentParser(description='Process probe data for CNV regions')
