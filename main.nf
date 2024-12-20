@@ -37,8 +37,8 @@ workflow {
         sample_summary = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/gtcs/gt_sample_summary.csv")
 
         plot_dir = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/plots/${sampleId}")
-        baf = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/bedgraphs/${sampleId}.BAF.bedgraph.gz")
-        lrr = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/bedgraphs/${sampleId}.LRR.bedgraph.gz")
+        baf = "s3://canvas/chip_data/${params.chip_id}/bedgraphs/${sampleId}.BAF.bedgraph.gz"
+        lrr = "s3://canvas/chip_data/${params.chip_id}/bedgraphs/${sampleId}.LRR.bedgraph.gz"
 
         makesexfile(sample_summary)
 
@@ -47,7 +47,7 @@ workflow {
         cnv_classification(cnv_classification_bed.out)
 
 
-        bed_with_baf_lrr = cnv_classification_bed.out.map { bed -> [sampleId, params.cnv_pk, baf, lrr, bed] }
+        bed_with_baf_lrr = cnv_classification_bed.out.map { bed -> [sampleId, params.cnv_pk, baf, lrr, bed[2]] }
         cnv_makeplots(bed_with_baf_lrr)
 
         cnv_make_bedgraphs(cnv_classification_bed.out)
@@ -593,7 +593,7 @@ process cnv_make_bedgraphs {
     tuple val(sampleId), val(cnv_pk), path(bed)
 
     output:
-    tuple val(sampleId), path ("${sampleId}_${cnv_pk}.bedgraph.gz")
+    tuple val(sampleId), path ("${sampleId}_${cnv_pk}.CNV_pos.bedgraph.gz"), path ("${sampleId}_${cnv_pk}.CNV_neg.bedgraph.gz")
 
     script:
     """
