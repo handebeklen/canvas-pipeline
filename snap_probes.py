@@ -21,17 +21,25 @@ def find_closest_probes(chrom, start, end, lrr_data):
     
     # Find closest left probe
     left_probe = None
-    for pos in positions:
-        if pos <= start:
-            left_probe = pos
-            break
+    if positions:
+        if start <= positions[0]:
+            left_probe = positions[0]
+        else:
+            for pos in positions:
+                if pos <= start:
+                    left_probe = pos
+                    break
     
     # Find closest right probe
     right_probe = None
-    for pos in positions:
-        if pos >= end:
-            right_probe = pos
-            break
+    if positions:
+        if end >= positions[-1]:
+            right_probe = positions[-1]
+        else:
+            for pos in reversed(positions):
+                if pos >= end:
+                    right_probe = pos
+                    break
     
     return left_probe, right_probe
 

@@ -33,7 +33,7 @@ workflow {
         sampleId = "${params.chip_id}_${params.position}"
         band = Channel.fromPath(params.band)
         bed = Channel.fromPath(params.cnv_bed)
-        bed = bed.map { bed -> [sampleId, params.cnv_pk, bed] }
+        cnv_input = bed.map { bed -> [sampleId, params.cnv_pk, bed] }
         sample_summary = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/gtcs/gt_sample_summary.csv")
 
         plot_dir = Channel.fromPath("s3://canvas/chip_data/${params.chip_id}/plots/${sampleId}")
@@ -43,11 +43,12 @@ workflow {
         makesexfile(sample_summary)
 
         if (params.snap_probes.toBoolean()) {
-            snap_probes(bed, lrr)
+            snap_probes(cnv_input, lrr)
+            cnv_input = snap_probes.out.bed.map { bed -> [sampleId, params.cnv_pk, bed] }
         }
 
-        cnv_addiscn(bed, band)
-        cnv_classification_bed(bed, makesexfile.out.first())
+        cnv_addiscn(cnv_input, band)
+        cnv_classification_bed(cnv_input, makesexfile.out.first())
         cnv_classification(cnv_classification_bed.out)
 
 
