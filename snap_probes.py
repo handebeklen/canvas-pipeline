@@ -97,7 +97,7 @@ def process_probes(bed_file, lrr_file, output_file):
             if left_probe is not None and right_probe is not None:
                 # Write output in BED format with original CNV and probe positions
                 out_f.write(
-                    f"{chrom}\t{left_probe}\t{right_probe}\tcn={cn};numsnp={snp_number}\n"
+                    f"{chrom}\t{left_probe}\t{right_probe}\t{cn}\t{snp_number}\n"
                 )
 
 
