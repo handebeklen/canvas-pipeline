@@ -27,7 +27,7 @@ def find_closest_probes(chrom, start, end, lrr_data):
             left_probe = positions[0]
             i = 0
         else:
-            for i, pos in enumerate(positions):
+            for i, pos in enumerate(reversed(positions)):
                 if pos <= start:
                     left_probe = pos
                     i = i
