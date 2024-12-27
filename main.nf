@@ -94,7 +94,10 @@ workflow {
 
     idat2gtc(idat_folder, bpm, egt)
     makesexfile(idat2gtc.out.sample_summary)
-    vcfs = gtc2vcf(idat2gtc.out.gtc_dir, bpm, csv, fasta_dir, fasta)
+    fasta = Channel.fromPath(params.fasta)
+    fasta_index = Channel.fromPath("${params.fasta}.fai")
+    prepared_reference = prepare_reference(fasta, fasta_index)
+    vcfs = gtc2vcf(idat2gtc.out.gtc_dir, bpm, csv, prepared_reference)
 
     vcfs .flatten() .map {
         vcf -> [vcf.getSimpleName(), vcf]
@@ -116,39 +119,56 @@ workflow {
     addiscn(penncnv_clean_cnv.out, band.first())
 
     bedgraphswithbeds = makebedgraphs.out.combine(beds, by:0)
-    makeplots(bedgraphswithbeds)
+    // makeplots(bedgraphswithbeds)
 
-    cnvswithscores = classification.out.scoresheet
-        .combine(addiscn.out, by:0)
-        .combine(makeplots.out, by:0)
+    // cnvswithscores = classification.out.scoresheet
+    //     .combine(addiscn.out, by:0)
+    //     .combine(makeplots.out, by:0)
 
 
-    cnvswithscores.view()
-    if ( params.samplesheet ) {
-        samplesheet = Channel.fromPath(params.samplesheet)
-	samplesheet.view()
+    // cnvswithscores.view()
+    // if ( params.samplesheet ) {
+    //     samplesheet = Channel.fromPath(params.samplesheet)
+    //     samplesheet.view()
 
-        samplesheet
-            .splitCsv(header:["sample_id", "protocol_id", "institute"],
-                sep:"\t",
-                skip:1
-            )
-            | map { row ->
-                [row.sample_id, row.protocol_id, row.institute]
-            }
-            | set {samplesheet}
-	samplesheet.view()
-        cnvswithscores = cnvswithscores.combine(samplesheet, by:0)
+    //     samplesheet
+    //         .splitCsv(header:["sample_id", "protocol_id", "institute"],
+    //             sep:"\t",
+    //             skip:1
+    //         )
+    //         | map { row ->
+    //             [row.sample_id, row.protocol_id, row.institute]
+    //         }
+    //         | set {samplesheet}
+    //     samplesheet.view()
+    //     cnvswithscores = cnvswithscores.combine(samplesheet, by:0)
+    // }
+    // else {
+    //     cnvswithscores = cnvswithscores.map { _ ->
+    //         _ + [_[0], 'noinstitute']
+    //     }
+    // }
+    // cnvswithscores.view()
+    //maketemplate(cnvswithscores, tex_template)
+    //makereport(maketemplate.out, template_dir)
     }
-    else {
-        cnvswithscores = cnvswithscores.map { _ ->
-            _ + [_[0], 'noinstitute']
-        }
-    }
-    cnvswithscores.view()
-    maketemplate(cnvswithscores, tex_template)
-    makereport(maketemplate.out, template_dir)
-    }
+}
+
+// Process to cache and prepare reference genome
+process prepare_reference {
+    storeDir "${workflow.workDir}/reference_cache"
+
+    input:
+    path fasta
+    path fai
+
+    output:
+    tuple path("${fasta}"), path("${fasta}.fai")  // Output both fasta and its index
+
+    script:
+    """
+    echo "staging reference"
+    """
 }
 
 
@@ -198,8 +218,7 @@ process gtc2vcf {
     path gtcs
     path bpm
     path csv
-    path fasta_dir
-    path fasta
+    tuple path(fasta), path(fasta_idx)  // Take prepared reference as input
 
     output:
     path("*.vcf.gz")
@@ -210,7 +229,7 @@ process gtc2vcf {
         --gtc-folder ${gtcs} \
         --bpm-manifest ${bpm} \
         --csv-manifest ${csv} \
-        --genome-fasta-file "${fasta_dir}/${fasta}" \
+        --genome-fasta-file "${fasta}" \
         --output-folder ./
     """
 }
