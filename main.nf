@@ -119,7 +119,7 @@ workflow {
     addiscn(penncnv_clean_cnv.out, band.first())
 
     bedgraphswithbeds = makebedgraphs.out.combine(beds, by:0)
-    // makeplots(bedgraphswithbeds)
+    makeplots(bedgraphswithbeds)
 
     // cnvswithscores = classification.out.scoresheet
     //     .combine(addiscn.out, by:0)
