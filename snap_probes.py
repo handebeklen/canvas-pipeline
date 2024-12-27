@@ -21,32 +21,33 @@ def find_closest_probes(chrom, start, end, lrr_data):
     positions = sorted(lrr_data[chrom])
 
     # Find closest left probe
-    left_probe = None
+      left_probe = None
     if positions:
         if start <= positions[0]:
             left_probe = positions[0]
             i = 0
         else:
-            for i, pos in enumerate(reversed(positions)):
+            for pos in reversed(positions):
                 if pos <= start:
                     left_probe = pos
-                    i = i
+                    i = positions.index(pos)
                     break
 
+
     # Find closest right probe
-    right_probe = None
+        right_probe = None
     if positions:
         if end >= positions[-1]:
             right_probe = positions[-1]
             j = len(positions)
         else:
-            for j, pos in enumerate(positions):
+            for pos in positions:
                 if pos >= end:
                     right_probe = pos
-                    j = j
+                    j = positions.index(pos)                                                                                                                                                                                         
                     break
 
-    return left_probe, right_probe, j - i
+    return left_probe, right_probe, j - i + 1
 
 
 def read_lrr_file(lrr_file):
