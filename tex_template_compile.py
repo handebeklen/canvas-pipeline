@@ -225,13 +225,14 @@ Not: {notes}
         args.output_file, "w", encoding="utf-8"
     ) as out_file:
 
+        output_template = in_file.read().replace("%%BULGULAR%%", latex_string)
+
         if chipsample_notes:
-            output_template = in_file.read().replace(
+            output_template = output_template.replace(
                 "%%CHIPSAMPLENOTES%%", "Not: " + "".join(chipsample_notes)
             )
         else:
-            output_template = in_file.read().replace("%%CHIPSAMPLENOTES%%", "")
-        output_template = in_file.read().replace("%%BULGULAR%%", latex_string)
+            output_template = output_template.replace("%%CHIPSAMPLENOTES%%", "")
         output_template = output_template.replace(
             "%%genome_plot%%", f"{args.plot_dir}/plot_genome.png"
         )

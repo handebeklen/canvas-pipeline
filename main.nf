@@ -9,6 +9,7 @@ params.csv = 'gtcler/GSA-24v1-0_C1.csv'
 params.egt = 'manifest-cluster/2003.egt'
 params.fasta = '/staging/references/hg19/hg19.fa'
 params.pfb = 'test/out.pfb'
+params.hmm = '/path/to/default/hhall.hmm'
 params.output_dir = 'outputs'
 params.samplesheet = ''
 params.band = "canvas-pipeline/"
@@ -85,6 +86,7 @@ workflow {
     csv = Channel.fromPath(params.csv)
     egt = Channel.fromPath(params.egt)
     pfb = file(params.pfb)
+    hmm = file(params.hmm)
     fasta = Channel.fromPath(params.fasta)
     band = Channel.fromPath(params.band)
     tex_template = Channel.fromPath(params.tex_template)
@@ -108,7 +110,7 @@ workflow {
 
     makebedgraphs(vcf2penncnv.out)
 
-    penncnv_detect(vcf2penncnv.out, pfb)
+    penncnv_detect(vcf2penncnv.out, pfb, hmm)
     penncnv_clean_cnv(penncnv_detect.out, pfb)
 
     beds = penncnv2bed(penncnv_clean_cnv.out, makesexfile.out.first())
@@ -296,7 +298,6 @@ process smooth_lrr {
     """
 }
 
-
 process penncnv_detect {
     memory "1 GB"
     cpus 1
@@ -307,15 +308,16 @@ process penncnv_detect {
     input:
     tuple val(sampleId), path(txt)
     path pfb
+    path hmm
 
     output:
     tuple val(sampleId), path("${sampleId}.cnv.txt")
 
     script:
     """
-    /home/user/PennCNV/detect_cnv.pl -test -hmm /home/user/PennCNV/lib/hhall.hmm -pfb ./${pfb} ${txt} --confidence         -log ${sampleId}.log      -out ${sampleId}.autosomal.out.cnv
-    /home/user/PennCNV/detect_cnv.pl -test -hmm /home/user/PennCNV/lib/hhall.hmm -pfb ./${pfb} ${txt} --confidence --chrx  -log ${sampleId}.chrx.log -out ${sampleId}.chrx.out.cnv
-    /home/user/PennCNV/detect_cnv.pl -test -hmm /home/user/PennCNV/lib/hhall.hmm -pfb ./${pfb} ${txt} --confidence --chry  -log ${sampleId}.chry.log -out ${sampleId}.chry.out.cnv
+    /home/user/PennCNV/detect_cnv.pl -test -hmm ${hmm} -pfb ${pfb} ${txt} --confidence         -log ${sampleId}.log      -out ${sampleId}.autosomal.out.cnv
+    /home/user/PennCNV/detect_cnv.pl -test -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chrx  -log ${sampleId}.chrx.log -out ${sampleId}.chrx.out.cnv
+    /home/user/PennCNV/detect_cnv.pl -test -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chry  -log ${sampleId}.chry.log -out ${sampleId}.chry.out.cnv
 
     cat ${sampleId}.autosomal.out.cnv ${sampleId}.chrx.out.cnv ${sampleId}.chry.out.cnv > ${sampleId}.cnv.txt
     """
@@ -338,7 +340,7 @@ process penncnv_clean_cnv {
 
     script:
     """
-    /home/user/PennCNV/clean_cnv.pl combineseg --signalfile ${pfb} ${txt} > ${sampleId}.cleaned.txt
+    /home/user/PennCNV/clean_cnv.pl combineseg --fraction 0.8 --signalfile ${pfb} ${txt} > ${sampleId}.cleaned.txt
     """
 }
 
