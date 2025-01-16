@@ -5,6 +5,40 @@ import csv
 import json
 
 
+def escape_latex(text):
+    """
+    Escape special LaTeX characters in text.
+    """
+    if not isinstance(text, str):
+        return text
+
+    latex_special_chars = {
+        "&": "\\&",
+        "%": "\\%",
+        "$": "\\$",
+        "#": "\\#",
+        "_": "\\_",
+        "{": "\\{",
+        "}": "\\}",
+        "~": "\\textasciitilde{}",
+        "^": "\\textasciicircum{}",
+        "\\": "\\textbackslash{}",
+        "<": "\\textless{}",
+        ">": "\\textgreater{}",
+        "|": "\\textbar{}",
+        '"': "\\textquotedbl{}",
+        "`": "\\textasciigrave{}",
+        "'": "\\textquotesingle{}",
+    }
+
+    # First escape backslashes, then other special characters
+    text = text.replace("\\", "\\textbackslash{}")
+    for char, escape in latex_special_chars.items():
+        if char != "\\":  # Skip backslash as it's already handled
+            text = text.replace(char, escape)
+    return text
+
+
 # Function to process CNV file
 def process_cnv_file(file_path):
     cnv_data = {}
@@ -193,21 +227,28 @@ ISCN           &  State         & SNP number   & Length        & ACMG classifica
 
 \\vspace{{0.5cm}}
 
-\\begin{{tabularx}}{{\\textwidth}}{{l L}}
-ACMG Total Score:                                        & {cnv.get("Total score", "N/A")} \\\\
-Evidence:                                                & {evidence_str} \\\\
-Known or Predicted Dosage-Sensitive Genes:  & {known_genes_str} \\\\
-All Protein Coding Genes:                   & {all_genes_str}
-\\end{{tabularx}}
+% \\begin{{tabularx}}{{\\textwidth}}{{l L}}
+% ACMG Total Score:                                        & {cnv.get("Total score", "N/A")} \\\\
+% Evidence:                                                & {evidence_str} \\\\
+% Known or Predicted Dosage-Sensitive Genes:  & {known_genes_str} \\\\
+% All Protein Coding Genes:                   & {all_genes_str}
+% \\end{{tabularx}}
+% \\vspace{{0.5cm}}
 
+\\begin{{longtable}}{{@{{}}p{{0.3\\textwidth}}@{{}}>{{\\raggedright\\arraybackslash}}p{{0.7\\textwidth}}@{{}}}}
+\\textbf{{ACMG Total Score:}} & {cnv.get("Total score", "N/A")} \\\\
+\\textbf{{Evidence:}} & {evidence_str} \\\\
+\\textbf{{Known or Predicted Dosage-Sensitive Genes:}} & {known_genes_str} \\\\
+\\textbf{{All Protein Coding Genes:}} & {all_genes_str} \\\\
+\\end{{longtable}}
 \\vspace{{0.5cm}}
 """
 
             if "notes" in cnv:
                 if cnv["notes"]:
-                    notes = " ".join(cnv["notes"])
+                    notes = " ".join(escape_latex(note) for note in cnv["notes"])
                     latex_string += f"""
-Not: {notes}
+\\textbf{{Not:}} {notes}
 """
                 else:
                     pass
@@ -228,8 +269,9 @@ Not: {notes}
         output_template = in_file.read().replace("%%BULGULAR%%", latex_string)
 
         if chipsample_notes:
+            escaped_notes = "".join(escape_latex(note) for note in chipsample_notes)
             output_template = output_template.replace(
-                "%%CHIPSAMPLENOTES%%", "Not: " + "".join(chipsample_notes)
+                "%%CHIPSAMPLENOTES%%", "\\textbf{{Not:}} " + escaped_notes
             )
         else:
             output_template = output_template.replace("%%CHIPSAMPLENOTES%%", "")
