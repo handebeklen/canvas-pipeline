@@ -227,6 +227,24 @@ ISCN           &  State         & SNP number   & Length        & ACMG classifica
 
 \\vspace{{0.5cm}}
 
+\\{{\\textwidth}}{{@{{}}p{{0.3\\textwidth}}@{{}}>{{\justifying\\arraybackslash}}p{{0.7\\textwidth}}@{{}}}}
+\\toprule
+\\endhead
+\\midrule
+\\multicolumn{{2}}{{r}}{{\\itshape Bir sonraki sayfada devam ediyor.}}\\\\
+\\midrule
+\\endfoot
+\\bottomrule
+\\endlastfoot
+
+\\textbf{{ACMG Total Score:}} & {cnv.get("Total score", "N/A")} \\\\[2ex]
+\\textbf{{Evidence:}} & {evidence_str} \\\\[2ex]
+\\textbf{{Known or Predicted Dosage-Sensitive Genes:}} & {known_genes_str} \\\\[2ex]
+\\textbf{{All Protein Coding Genes:}} & {all_genes_str} \\\\
+\\end{{tabularx}}
+
+\\vspace{{0.5cm}}
+
 % \\begin{{tabularx}}{{\\textwidth}}{{l L}}
 % ACMG Total Score:                                        & {cnv.get("Total score", "N/A")} \\\\
 % Evidence:                                                & {evidence_str} \\\\
@@ -235,13 +253,6 @@ ISCN           &  State         & SNP number   & Length        & ACMG classifica
 % \\end{{tabularx}}
 % \\vspace{{0.5cm}}
 
-\\begin{{longtable}}{{@{{}}p{{0.3\\textwidth}}@{{}}>{{\\raggedright\\arraybackslash}}p{{0.7\\textwidth}}@{{}}}}
-\\textbf{{ACMG Total Score:}} & {cnv.get("Total score", "N/A")} \\\\
-\\textbf{{Evidence:}} & {evidence_str} \\\\
-\\textbf{{Known or Predicted Dosage-Sensitive Genes:}} & {known_genes_str} \\\\
-\\textbf{{All Protein Coding Genes:}} & {all_genes_str} \\\\
-\\end{{longtable}}
-\\vspace{{0.5cm}}
 """
 
             if "notes" in cnv:
