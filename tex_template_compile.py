@@ -209,51 +209,10 @@ def main():
                 italic_genes = ", ".join(
                     [f"\\textit{{{gene}}}" for gene in genes if gene]
                 )
-                return italic_genes if italic_genes else "Gen içermemektedir."
+                return italic_genes if italic_genes else "Bölge Gen içermemektedir."
 
             known_genes_str = italicize_genes(known_genes)
             all_genes_str = italicize_genes(all_genes)
-
-            latex_string += f"""
-\\subsection{{{variant_id.replace('_', ':', 1).replace('_', '-')}}}
-
-\\begin{{tabularx}}{{\\textwidth}}{{l X X X X X}}
-ISCN           &  State         & SNP number   & Length        & ACMG classification     & Confidence    \\\\
-\\hline
-{iscn}         & {cnv["Type"]}  & {num_snp}    & {cnv_length}  & {cnv["Classification"]} & {cnv_conf}     \\\\
-\\hline
-\\end{{tabularx}}
-
-
-\\vspace{{0.5cm}}
-
-\\{{\\textwidth}}{{@{{}}p{{0.3\\textwidth}}@{{}}>{{\justifying\\arraybackslash}}p{{0.7\\textwidth}}@{{}}}}
-\\toprule
-\\endhead
-\\midrule
-\\multicolumn{{2}}{{r}}{{\\itshape Bir sonraki sayfada devam ediyor.}}\\\\
-\\midrule
-\\endfoot
-\\bottomrule
-\\endlastfoot
-
-\\textbf{{ACMG Total Score:}} & {cnv.get("Total score", "N/A")} \\\\[2ex]
-\\textbf{{Evidence:}} & {evidence_str} \\\\[2ex]
-\\textbf{{Known or Predicted Dosage-Sensitive Genes:}} & {known_genes_str} \\\\[2ex]
-\\textbf{{All Protein Coding Genes:}} & {all_genes_str} \\\\
-\\end{{tabularx}}
-
-\\vspace{{0.5cm}}
-
-% \\begin{{tabularx}}{{\\textwidth}}{{l L}}
-% ACMG Total Score:                                        & {cnv.get("Total score", "N/A")} \\\\
-% Evidence:                                                & {evidence_str} \\\\
-% Known or Predicted Dosage-Sensitive Genes:  & {known_genes_str} \\\\
-% All Protein Coding Genes:                   & {all_genes_str}
-% \\end{{tabularx}}
-% \\vspace{{0.5cm}}
-
-"""
 
             if "notes" in cnv:
                 if cnv["notes"]:
@@ -265,6 +224,30 @@ ISCN           &  State         & SNP number   & Length        & ACMG classifica
                     pass
             else:
                 pass
+
+            latex_string += f"""
+\\begin{{tabularx}}{{\\textwidth}}{{l X X X}}
+\\makecell[l]{{\\textbf{{ISCN}}\\\\\\textbf{{State}}}} & 
+\\makecell[l]{{\\textbf{{SNP number}}\\\\\\textbf{{Length}}}} & 
+\\makecell[l]{{\\textbf{{Classification (Score)}}\\\\\\textbf{{Evidences}}}} &
+\\makecell[l]{{\\textbf{{Confidence}}}} \\\\
+\\hline
+\\makecell[l]{{{iscn}\\\\{cnv["Type"]}}} & 
+\\makecell[l]{{{num_snp}\\\\{cnv_length}}} & 
+\\makecell[l]{{{cnv["Classification"]} ({cnv.get("Total score", "N/A")})\\\\{evidence_str}}} &
+\\makecell[l]{{{cnv_conf}}} \\\\
+\\hline
+\\end{{tabularx}}
+
+\\subsubsection{{Known or Predicted Dosage-Sensitive Genes}}
+{known_genes_str}
+
+\\subsubsection{{All Protein Coding Genes}}
+{all_genes_str}
+
+\\vspace{{0.5cm}}
+
+"""
 
             latex_string += f"""
 \\vspace{{0.5cm}}

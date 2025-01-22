@@ -110,7 +110,7 @@ workflow {
 
     makebedgraphs(vcf2penncnv.out)
 
-    penncnv_detect(vcf2penncnv.out, pfb, hmm)
+    penncnv_detect(vcf2penncnv.out, pfb, hmm, makesexfile.out.first())
     penncnv_clean_cnv(penncnv_detect.out, pfb)
 
     beds = penncnv2bed(penncnv_clean_cnv.out, makesexfile.out.first())
@@ -309,6 +309,7 @@ process penncnv_detect {
     tuple val(sampleId), path(txt)
     path pfb
     path hmm
+    path sex_file
 
     output:
     tuple val(sampleId), path("${sampleId}.cnv.txt")
@@ -316,8 +317,8 @@ process penncnv_detect {
     script:
     """
     /home/user/PennCNV/detect_cnv.pl -test -hmm ${hmm} -pfb ${pfb} ${txt} --confidence         -log ${sampleId}.log      -out ${sampleId}.autosomal.out.cnv
-    /home/user/PennCNV/detect_cnv.pl -test -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chrx  -log ${sampleId}.chrx.log -out ${sampleId}.chrx.out.cnv
-    /home/user/PennCNV/detect_cnv.pl -test -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chry  -log ${sampleId}.chry.log -out ${sampleId}.chry.out.cnv
+    /home/user/PennCNV/detect_cnv.pl -test -sexfile ${sex_file} -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chrx  -log ${sampleId}.chrx.log -out ${sampleId}.chrx.out.cnv
+    /home/user/PennCNV/detect_cnv.pl -test -sexfile ${sex_file} -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chry  -log ${sampleId}.chry.log -out ${sampleId}.chry.out.cnv
 
     cat ${sampleId}.autosomal.out.cnv ${sampleId}.chrx.out.cnv ${sampleId}.chry.out.cnv > ${sampleId}.cnv.txt
     """
