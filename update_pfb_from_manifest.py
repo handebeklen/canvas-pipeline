@@ -28,30 +28,44 @@ def process_pfb(manifest_path, pfb_path, output_path):
             ["Chromosome", "Position"]
         ].to_dict("index")
 
-        # Update PFB data with manifest information
-        for idx, row in pfb_df.iterrows():
-            probe_name = row["Name"]
-            if probe_name in manifest_info:
-                pfb_df.at[idx, "Chr"] = manifest_info[probe_name]["Chromosome"]
-                pfb_df.at[idx, "Position"] = manifest_info[probe_name]["Position"]
+        print(0)
+        manifest_mapping = manifest_df[["Name", "Chromosome", "Position"]].copy()
+        manifest_mapping.columns = ["names_exploded", "Chr", "Position"]
 
+        # Merge the mapping with pfb_df
+        pfb_df = pfb_df.merge(
+            manifest_mapping, on="names_exploded", how="left", suffixes=("_old", "")
+        )
+
+        # Update Chr and Position columns
+        pfb_df["Chr"] = pfb_df["Chr"].fillna(pfb_df["Chr_old"])
+        pfb_df["Position"] = pfb_df["Position"].fillna(pfb_df["Position_old"])
+
+        # Drop temporary columns
+        pfb_df = pfb_df.drop(columns=["Chr_old", "Position_old"])
+        print(1)
         # Create missing probes DataFrame
         manifest_probes = manifest_df[["Name", "Chromosome", "Position"]].copy()
         manifest_probes.columns = ["Name", "Chr", "Position"]
+        print(2)
+        print(len(manifest_probes))
 
         # Find missing probes
         pfb_probes = set(pfb_df["Name"])
         manifest_probe_names = set(manifest_probes["Name"])
+        print(3)
 
         # Find probes missing from PFB
         missing_probes = manifest_probes[
             ~manifest_probes["Name"].isin(pfb_probes)
         ].copy()
+        print(4)
 
         # Find probes in PFB but not in manifest
         extra_probes = pfb_df[~pfb_df["Name"].isin(manifest_probe_names)]
         print("\nNumber of probes in PFB but not in manifest:", len(extra_probes))
         print(extra_probes)
+        print(5)
 
         # Add a default frequency value for the missing probes
         missing_probes["PFB"] = 0.001
@@ -59,8 +73,10 @@ def process_pfb(manifest_path, pfb_path, output_path):
         # Ensure pfb_df has the correct columns
         pfb_df = pfb_df[["Name", "Chr", "Position", "PFB"]]
 
+        print(len(manifest_probes))
         # Combine the original PFB data with the missing probes
         updated_pfb_df = pd.concat([pfb_df, missing_probes], ignore_index=True)
+        print(6)
 
         # Custom sorting function for chromosomes
         def chr_sort(x):
@@ -85,10 +101,12 @@ def process_pfb(manifest_path, pfb_path, output_path):
         updated_pfb_df = updated_pfb_df.sort_values(
             by=["Chr_sort", "Position"], ignore_index=True
         )
-        updated_pfb_df = updated_pfb_df.drop("Chr_sort", axis=1)
+        updated_pfb_df = updated_pfb_df.drop_duplicates(
+            subset=["Chr", "Position"], keep="first"
+        ).reset_index(drop=True)
 
+        print(7)
         # Ensure final output has exactly these columns in this order
-        updated_pfb_df = updated_pfb_df[["Name", "Chr", "Position", "PFB"]]
         updated_pfb_df = (
             updated_pfb_df.groupby(["Chr", "Position"])
             .agg(
@@ -104,6 +122,7 @@ def process_pfb(manifest_path, pfb_path, output_path):
         print(f"\nTotal probes in updated PFB: {len(updated_pfb_df)}")
         print(f"Probes with missing chromosome: {updated_pfb_df['Chr'].isna().sum()}")
 
+        updated_pfb_df = updated_pfb_df[["Name", "Chr", "Position", "PFB"]]
         # Save the updated PFB file with headers
         updated_pfb_df.to_csv(output_path, sep="\t", index=False)
         print(f"\nUpdated PFB file saved to: {output_path}")
