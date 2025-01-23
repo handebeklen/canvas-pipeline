@@ -316,9 +316,10 @@ process penncnv_detect {
 
     script:
     """
+    grep "${sampleId}" "${sex_file}" > sample_sex
     /home/user/PennCNV/detect_cnv.pl -test -hmm ${hmm} -pfb ${pfb} ${txt} --confidence         -log ${sampleId}.log      -out ${sampleId}.autosomal.out.cnv
-    /home/user/PennCNV/detect_cnv.pl -test -sexfile ${sex_file} -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chrx  -log ${sampleId}.chrx.log -out ${sampleId}.chrx.out.cnv
-    /home/user/PennCNV/detect_cnv.pl -test -sexfile ${sex_file} -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chry  -log ${sampleId}.chry.log -out ${sampleId}.chry.out.cnv
+    /home/user/PennCNV/detect_cnv.pl -test -sexfile sample_sex -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chrx  -log ${sampleId}.chrx.log -out ${sampleId}.chrx.out.cnv
+    /home/user/PennCNV/detect_cnv.pl -test -sexfile sample_sex -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chry  -log ${sampleId}.chry.log -out ${sampleId}.chry.out.cnv
 
     cat ${sampleId}.autosomal.out.cnv ${sampleId}.chrx.out.cnv ${sampleId}.chry.out.cnv > ${sampleId}.cnv.txt
     """
@@ -389,7 +390,7 @@ process classification {
     memory "1 GB"
     cpus 1
     tag "$sampleId"
-    container "fauzul/classifycnv:1.0"
+    container "ghcr.io/gen-era/classifycnv:3b6863daf18af577e3090f31fa24aad0403d5027"
     publishDir "${output_dir}/ClassifyCNV/", mode: "copy"
 
     input:
@@ -427,7 +428,7 @@ process addiscn {
 
 process makeplots {
     tag "$sampleId"
-    container "yserdem/bedgraph-visualizer"
+    container "ghcr.io/gen-era/bedgraph-visualizer:d5210541007727a67593f4f51300d7609f1723b5"
     publishDir "${output_dir}/plots", mode: "copy"
 
     input:
@@ -440,7 +441,6 @@ process makeplots {
     """
     sed 's/^chr//' ${bed} > regions
     Rscript /usr/src/app/bedgraph-visualizer.R region_plot ${BAF} ${LRR} regions ${sampleId}
-
     Rscript /usr/src/app/bedgraph-visualizer.R genome_plot ${BAF} ${LRR} ${sampleId}
     """
 }
