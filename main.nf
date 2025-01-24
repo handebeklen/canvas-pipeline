@@ -342,7 +342,7 @@ process penncnv_clean_cnv {
 
     script:
     """
-    /home/user/PennCNV/clean_cnv.pl combineseg --fraction 0.8 --signalfile ${pfb} ${txt} > ${sampleId}.cleaned.txt
+    /home/user/PennCNV/clean_cnv.pl combineseg --fraction 0.5 --signalfile ${pfb} ${txt} > ${sampleId}.cleaned.txt
     """
 }
 
