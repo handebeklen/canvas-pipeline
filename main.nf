@@ -317,9 +317,16 @@ process penncnv_detect {
     script:
     """
     grep "${sampleId}" "${sex_file}" > sample_sex
+    sex=\$(cut -f2 sample_sex)
     /home/user/PennCNV/detect_cnv.pl -test -hmm ${hmm} -pfb ${pfb} ${txt} --confidence         -log ${sampleId}.log      -out ${sampleId}.autosomal.out.cnv
-    /home/user/PennCNV/detect_cnv.pl -test -sexfile sample_sex -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chrx  -log ${sampleId}.chrx.log -out ${sampleId}.chrx.out.cnv
-    /home/user/PennCNV/detect_cnv.pl -test -sexfile sample_sex -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chry  -log ${sampleId}.chry.log -out ${sampleId}.chry.out.cnv
+    
+    if [[ "\$sex" == "M" || "\$sex" == "F" ]]; then
+        /home/user/PennCNV/detect_cnv.pl -test -sexfile sample_sex -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chrx  -log ${sampleId}.chrx.log -out ${sampleId}.chrx.out.cnv
+        /home/user/PennCNV/detect_cnv.pl -test -sexfile sample_sex -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chry  -log ${sampleId}.chry.log -out ${sampleId}.chry.out.cnv
+    else
+        /home/user/PennCNV/detect_cnv.pl -test -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chrx  -log ${sampleId}.chrx.log -out ${sampleId}.chrx.out.cnv
+        /home/user/PennCNV/detect_cnv.pl -test -hmm ${hmm} -pfb ${pfb} ${txt} --confidence --chry  -log ${sampleId}.chry.log -out ${sampleId}.chry.out.cnv
+    fi
 
     cat ${sampleId}.autosomal.out.cnv ${sampleId}.chrx.out.cnv ${sampleId}.chry.out.cnv > ${sampleId}.cnv.txt
     """
@@ -428,7 +435,7 @@ process addiscn {
 
 process makeplots {
     tag "$sampleId"
-    container "ghcr.io/gen-era/bedgraph-visualizer:d5210541007727a67593f4f51300d7609f1723b5"
+    container "ghcr.io/gen-era/bedgraph-visualizer:70caf7a190d65bed88aeb8a9c552b37c7580a170"
     publishDir "${output_dir}/plots", mode: "copy"
 
     input:
