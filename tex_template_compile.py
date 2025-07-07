@@ -226,16 +226,13 @@ def main():
                 pass
 
             latex_string += f"""
-\\begin{{tabularx}}{{\\textwidth}}{{l X X X}}
-\\makecell[l]{{\\textbf{{ISCN}}\\\\\\textbf{{State}}}} & 
-\\makecell[l]{{\\textbf{{SNP number}}\\\\\\textbf{{Length}}}} & 
-\\makecell[l]{{\\textbf{{Classification (Score)}}\\\\\\textbf{{Evidences}}}} &
-\\makecell[l]{{\\textbf{{Confidence}}}} \\\\
+\\begin{{tabularx}}{{\\textwidth}}{{X X X m{{2.5cm}}}}
+\\textbf{{ISCN / State}} & \\textbf{{SNP number / Length}} & \\textbf{{Classification (Score) / Evidences}} & \\textbf{{Confidence}} \\\\
 \\hline
-\\makecell[l]{{{iscn}\\\\{cnv["Type"]}}} & 
-\\makecell[l]{{{num_snp}\\\\{cnv_length}}} & 
-\\makecell[l]{{{cnv["Classification"]} ({cnv.get("Total score", "N/A")})\\\\{evidence_str}}} &
-\\makecell[l]{{{cnv_conf}}} \\\\
+\\begin{{tabular}}[t]{{@{{}}l@{{}}}} {iscn} \\\\ {cnv["Type"]} \\end{{tabular}} & 
+\\begin{{tabular}}[t]{{@{{}}l@{{}}}} {num_snp} \\\\ {cnv_length} \\end{{tabular}} & 
+\\begin{{tabular}}[t]{{@{{}}l@{{}}}} {cnv["Classification"]} ({cnv.get("Total score", "N/A")}) \\\\ {evidence_str if evidence_str else ""} \\end{{tabular}} & 
+{cnv_conf} \\\\
 \\hline
 \\end{{tabularx}}
 
